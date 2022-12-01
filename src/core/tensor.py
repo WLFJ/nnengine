@@ -82,6 +82,14 @@ class Tensor(object):
         op: Op = TanhOp(self)
         return op.calc()
 
+    def relu(self):
+        op: Op = ReluOp(self)
+        return op.calc()
+
+    def softmax(self):
+        op: Op = SoftmaxOp(self)
+        return op.calc()
+
     def transpose(self):
         if (self.autograd):
             return Tensor(self.data.transpose(),
@@ -312,6 +320,21 @@ class TanhOp(Op):
         return self.output
 
 
+class ReLuOp(Op):
+    def __init__(self, t: Tensor):
+        super(ReLuOp, self).__init__([t])
+        self.grad_fn = [
+            lambda grad, out, args: grad * (args[0].data > 0)
+        ]
+        self.calc()
+        self.add_dependency()
+
+    def calc(self):
+        if self.output is None:
+            self.output: Tensor = Tensor(np.maximum(self.input[0].data, 0))
+        return self.output
+
+
 class TransposeOp(Op):
 
     def __init__(self, t: Tensor, axes: Iterable[int] = None):
@@ -384,6 +407,22 @@ class MeanOp(Op):
         return self.output
 
 
+class SoftmaxOp(Op):
+
+    def __init__(self, t: Tensor):
+        super(SoftmaxOp, self).__init__([t])
+        self.grad_fn = [
+            lambda grad, out, args: grad * out.data * (1 - out.data)
+        ]
+        self.calc()
+        self.add_dependency()
+
+    def calc(self):
+        if self.output is None:
+            self.output: Tensor = Tensor(np.softmax(self.input[0].data))
+        return self.output
+
+
 def log(t: Tensor) -> Tensor:
     return t.log()
 
@@ -408,5 +447,29 @@ def sigmoid(t: Tensor) -> Tensor:
     return t.sigmoid()
 
 
+def relu(t: Tensor) -> Tensor:
+    return t.relu()
+
+
 def mm(t1: Tensor, t2: Tensor) -> Tensor:
     return t1.mm(t2)
+
+
+def softmax(t: Tensor) -> Tensor:
+    return t.softmax()
+
+
+def sum(t: Tensor, dim: int) -> Tensor:
+    return t.sum(dim)
+
+
+def max(t: Tensor, dim: int) -> Tensor:
+    return t.max(dim)
+
+
+def mean(t: Tensor, dim: int) -> Tensor:
+    return t.mean(dim)
+
+
+def transpose(t: Tensor, axes: Iterable[int] = None) -> Tensor:
+    return t.transpose(axes)
