@@ -1,4 +1,4 @@
-from src.core.tensor import Tensor
+from toynn.core.tensor import Tensor
 import numpy as np
 
 

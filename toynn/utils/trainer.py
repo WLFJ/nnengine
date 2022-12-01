@@ -1,9 +1,9 @@
 import pickle
 from tqdm import tqdm
 import numpy as np
-from src.data import DataLoader
+from toynn.data import DataLoader
 
-from src.core.tensor import Tensor
+from toynn.core.tensor import Tensor
 
 
 class Trainer(object):

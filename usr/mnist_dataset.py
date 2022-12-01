@@ -1,4 +1,4 @@
-from src.data.dataloader import Dataset
+from toynn.data.dataloader import Dataset
 import numpy as np
 
 
