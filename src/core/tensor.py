@@ -286,7 +286,7 @@ class MaxOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data.sum(axis=self.dim))
+            self.output: Tensor = Tensor(self.input[0].data.max(axis=self.dim))
         return self.output
 
 
@@ -304,5 +304,5 @@ class MeanOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data.sum(axis=self.dim))
+            self.output: Tensor = Tensor(self.input[0].data.mean(axis=self.dim))
         return self.output
