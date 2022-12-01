@@ -2,7 +2,7 @@ from tensor import Tensor
 import numpy as np
 
 
-class Layer(object):
+class Model(object):
 
     def __init__(self):
         self.parameters = list()
@@ -11,7 +11,7 @@ class Layer(object):
         return self.parameters
 
 
-class Sequential(Layer):
+class Sequential(Model):
 
     def __init__(self, layers=list()):
         super().__init__()
@@ -33,7 +33,7 @@ class Sequential(Layer):
         return params
 
 
-class Linear(Layer):
+class Linear(Model):
 
     def __init__(self, n_inputs, n_outputs):
         super().__init__()
@@ -48,7 +48,7 @@ class Linear(Layer):
         return input.mm(self.weight) + self.bias
 
 
-class Conv2d(Layer):
+class Conv2d(Model):
     def __init__(self, n_inputs, n_outputs, filter_size, stride=1, padding=0, bias=True):
         super().__init__()
         self.filter_size = filter_size
@@ -93,7 +93,7 @@ class Conv2d(Layer):
 
 
 # TODO 池化如何反向传播
-class MaxPool2d(Layer):
+class MaxPool2d(Model):
     def __init__(self, filter_size, stride=None):
         super().__init__()
         self.filter_size = filter_size
@@ -124,7 +124,7 @@ class MaxPool2d(Layer):
         return self.output
 
 
-class AvgPool2d(Layer):
+class AvgPool2d(Model):
     def __init__(self, filter_size, stride=None):
         super().__init__()
         self.filter_size = filter_size
@@ -155,7 +155,7 @@ class AvgPool2d(Layer):
         return self.output
 
 
-def LSTM(Layer):
+def LSTM(Model):
     def __init__(self, n_inputs, n_hidden, n_outputs):
         super().__init__()
         self.n_inputs = n_inputs
@@ -190,7 +190,7 @@ def LSTM(Layer):
         return self.y, self.h
 
 
-class Tanh(Layer):
+class Tanh(Model):
     def __init__(self):
         super().__init__()
 
@@ -198,17 +198,9 @@ class Tanh(Layer):
         return input.tanh()
 
 
-class Sigmoid(Layer):
+class Sigmoid(Model):
     def __init__(self):
         super().__init__()
 
     def forward(self, input):
         return input.sigmoid()
-
-
-class MSELoss(Layer):
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, pred, target):
-        return ((pred - target) * (pred - target)).sum(0)
