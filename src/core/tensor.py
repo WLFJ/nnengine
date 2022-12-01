@@ -1,5 +1,4 @@
 import numpy as np
-from typing import Mapping, MutableMapping, Sequence, Iterable, List, Set
 
 
 class Tensor(object):
@@ -83,7 +82,7 @@ class Tensor(object):
         return op.calc()
 
     def relu(self):
-        op: Op = ReluOp(self)
+        op: Op = ReLuOp(self)
         return op.calc()
 
     def softmax(self):
@@ -91,13 +90,8 @@ class Tensor(object):
         return op.calc()
 
     def transpose(self):
-        if (self.autograd):
-            return Tensor(self.data.transpose(),
-                          autograd=True,
-                          creators=[self],
-                          creation_op="transpose")
-
-        return Tensor(self.data.transpose())
+        op: Op = TransposeOp(self)
+        return op.calc()
 
     def abs(self):
         op: Op = AbsOp(self)
@@ -341,7 +335,7 @@ class ReLuOp(Op):
 
 class TransposeOp(Op):
 
-    def __init__(self, t: Tensor, axes: Iterable[int] = None):
+    def __init__(self, t: Tensor, axes: [int] = None):
         super(TransposeOp, self).__init__([t])
         self.axes = axes
 
