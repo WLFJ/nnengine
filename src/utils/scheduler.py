@@ -77,11 +77,10 @@ class LambdaLR(Scheduler):
 
 class ReduceLROnPlateau(Scheduler):
 
-    def __init__(self, optimizer: Optimizer, factor: float, patience: int, verbose: bool = False):
+    def __init__(self, optimizer: Optimizer, lr_decay: float, patience: int):
         super(ReduceLROnPlateau, self).__init__(optimizer)
-        self.factor = factor
+        self.lr_decay = lr_decay
         self.patience = patience
-        self.verbose = verbose
         self.epoch = 0
         self.best = float('inf')
         self.wait = 0
@@ -94,7 +93,5 @@ class ReduceLROnPlateau(Scheduler):
         else:
             self.wait += 1
             if self.wait >= self.patience:
-                self.optimizer.lr *= self.factor
+                self.optimizer.lr *= self.lr_decay
                 self.wait = 0
-                if self.verbose:
-                    print(f'Epoch {self.epoch}: ReduceLROnPlateau reducing learning rate to {self.optimizer.lr}.')

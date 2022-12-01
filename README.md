@@ -15,8 +15,9 @@ BUAA 2022 硕士高等软工课程设计
 │   └── utils                    训练、测试工具
 │       ├── evaluator.py         评估器
 │       ├── optimizer.py         优化器
+│       ├── scheduler.py         学习率管理器
 │       └── trainer.py           训练器
-├── test.py                            测试
-└── usr                                自订模型、数据集
+├── test.py                      测试
+└── usr                          自订模型、数据集
     └── mnist_dataset.py
 ```
