@@ -1,4 +1,4 @@
-from optimizer import Optimizer
+from toynn.utils.optimizer import Optimizer
 import numpy as np
 
 

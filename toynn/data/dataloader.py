@@ -1,5 +1,4 @@
 import numpy as np
-from toynn.core.tensor import Tensor
 
 
 class Batch:

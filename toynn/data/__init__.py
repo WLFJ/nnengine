@@ -1,1 +1,1 @@
-from dataloader import *
+from toynn.data.dataloader import *
