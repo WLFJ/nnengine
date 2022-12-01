@@ -8,6 +8,9 @@ class Scheduler:
         self.optimizer = optimizer
         pass
 
+    def step(self, loss):
+        pass
+
 
 class MultiStepLR(Scheduler):
 
@@ -17,7 +20,7 @@ class MultiStepLR(Scheduler):
         self.lr_decay = lr_decay
         self.epoch = 0
 
-    def step(self):
+    def step(self, loss):
         self.epoch += 1
         if self.epoch in self.milestones:
             self.optimizer.lr *= self.lr_decay
@@ -31,7 +34,7 @@ class StepLR(Scheduler):
         self.lr_decay = lr_decay
         self.epoch = 0
 
-    def step(self):
+    def step(self, loss):
         self.epoch += 1
         if self.epoch % self.step_size == 0:
             self.optimizer.lr *= self.lr_decay
@@ -44,7 +47,7 @@ class Exponential(Scheduler):
         self.lr_decay = lr_decay
         self.epoch = 0
 
-    def step(self):
+    def step(self, loss):
         self.epoch += 1
         self.optimizer.lr *= self.lr_decay
 
@@ -57,7 +60,7 @@ class Cosine(Scheduler):
         self.eta_min = eta_min
         self.epoch = 0
 
-    def step(self):
+    def step(self, loss):
         self.epoch += 1
         self.optimizer.lr = self.eta_min + (self.optimizer.lr - self.eta_min) * (
                 1 + np.cos(np.pi * self.epoch / self.T_max)) / 2
@@ -70,7 +73,7 @@ class LambdaLR(Scheduler):
         self.lr_lambda = lr_lambda
         self.epoch = 0
 
-    def step(self):
+    def step(self, loss):
         self.epoch += 1
         self.optimizer.lr = self.lr_lambda(self.epoch)
 

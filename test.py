@@ -1,16 +1,26 @@
-from src.core.tensor import Tensor
-
+from src.core.nn import Model, Sequential, Linear, Conv2d
+from src.data import split
+from src.utils import crossEntropyLoss
 from src.core.nn import Linear
 
 import numpy as np
 
-model = Linear(10, 3)
+from src.utils import SGD, Trainer
 
-data = Tensor(np.random.randn(1, 10))
-truth = Tensor(np.array([1, 0, 0]))
+m = Linear(2, 1)
 
-d = model.forward(data)
+data = np.randn(100, 2)
 
-loss = ((d - truth) * (d - truth)).sum(0)
+labels = np.randn(100, 1)
 
-loss.backward()
+train_dataset, test_dataset = split(data, labels, 0.8)
+
+opt = SGD(parameters=m.get_parameters(), alpha=0.01)
+
+trainer = Trainer(m, opt, crossEntropyLoss, {
+    "epochs": 10,
+    "batch_size": 10,
+    "shuffle": True
+})
+
+loss = trainer.train(train_dataset, test_dataset)

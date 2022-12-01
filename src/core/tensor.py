@@ -4,7 +4,7 @@ import numpy as np
 class Tensor(object):
 
     def __init__(self, data,
-                 autograd: bool = True,
+                 autograd: bool = True,  # TODO 这里应该是 False
                  creation_op=None):
 
         self.data = np.array(data)

@@ -1,10 +1,16 @@
 import numpy as np
+from src.core.tensor import Tensor
+
+
+class Batch:
+    def __init__(self, data, labels):
+        self.data = data
+        self.labels = labels
 
 
 class Dataset(object):
-    def __init__(self, data_path, transform=None):
+    def __init__(self, data_path):
         self.data_path = data_path
-        self.transform = transform
         self.data = self.load_data()
         self.shape = self.data.shape
 
@@ -16,7 +22,8 @@ class Dataset(object):
         return len(self.data)
 
     def __getitem__(self, idx):
-        raise NotImplementedError
+        img = self.data[idx]
+        return img
 
 
 class DataLoader(object):
@@ -41,8 +48,10 @@ class DataLoader(object):
             batch = []
             for i in range(self.batch_size):
                 idx = self.indexes[self.index * self.batch_size + i]
-                batch.append(self.dataset[idx])
-            self.index += 1
+                batch.append(
+                    Batch(self.dataset[idx][:-1], self.dataset[idx][-1])
+                )
+                self.index += 1
             return batch
         else:
             self.index = 0
@@ -59,18 +68,9 @@ class DataLoader(object):
         self.dataset = np.concatenate((self.dataset, padding_data), axis=0)
 
 
-class DataSpliter:
-    def __init__(self, dataset, ratio):
-        self.dataset = dataset
-        self.ratio = ratio
-        self.length = len(dataset)
-        self.split_num = int(self.length * self.ratio)
-
-    def split(self):
-        indexes = np.arange(self.length)
-        np.random.shuffle(indexes)
-        train_indexes = indexes[:self.split_num]
-        test_indexes = indexes[self.split_num:]
-        train_data = self.dataset[train_indexes]
-        test_data = self.dataset[test_indexes]
-        return train_data, test_data
+def split(dataset, ratio):
+    length = len(dataset)
+    train_length = int(length * ratio)
+    train_dataset = dataset[:train_length]
+    eval_dataset = dataset[train_length:]
+    return train_dataset, eval_dataset

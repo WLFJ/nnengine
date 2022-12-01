@@ -41,8 +41,8 @@ class Linear(Model):
         self.weight = Tensor(W, autograd=True)
         self.bias = Tensor(np.zeros(n_outputs), autograd=True)
 
-        self.parameters.append(self.weight)
-        self.parameters.append(self.bias)
+    def get_parameters(self):
+        return [self.weight, self.bias]
 
     def forward(self, input):
         return input.mm(self.weight) + self.bias
@@ -62,8 +62,11 @@ class Conv2d(Model):
         else:
             self.bias = None
 
-        self.parameters.append(self.weight)
-        self.parameters.append(self.bias)
+    def get_parameters(self):
+        if self.bias is not None:
+            return [self.weight, self.bias]
+        else:
+            return [self.weight]
 
     def forward(self, input):
         batch_size, n_inputs, input_height, input_width = input.data.shape
@@ -123,6 +126,9 @@ class MaxPool2d(Model):
 
         return self.output
 
+    def get_parameters(self):
+        return []
+
 
 class AvgPool2d(Model):
     def __init__(self, filter_size, stride=None):
@@ -154,8 +160,11 @@ class AvgPool2d(Model):
 
         return self.output
 
+    def get_parameters(self):
+        return []
 
-def LSTM(Model):
+
+class LSTM(Model):
     def __init__(self, n_inputs, n_hidden, n_outputs):
         super().__init__()
         self.n_inputs = n_inputs
@@ -168,12 +177,6 @@ def LSTM(Model):
 
         self.bias_h = Tensor(np.zeros(n_hidden), autograd=True)
         self.bias_y = Tensor(np.zeros(n_outputs), autograd=True)
-
-        self.parameters.append(self.W_ih)
-        self.parameters.append(self.W_hh)
-        self.parameters.append(self.W_hy)
-        self.parameters.append(self.bias_h)
-        self.parameters.append(self.bias_y)
 
     def forward(self, input, hidden):
         self.hidden = hidden
@@ -189,6 +192,9 @@ def LSTM(Model):
 
         return self.y, self.h
 
+    def get_parameters(self):
+        return [self.W_ih, self.W_hh, self.W_hy, self.bias_h, self.bias_y]
+
 
 class Tanh(Model):
     def __init__(self):
@@ -197,6 +203,9 @@ class Tanh(Model):
     def forward(self, input):
         return input.tanh()
 
+    def get_parameters(self):
+        return []
+
 
 class Sigmoid(Model):
     def __init__(self):
@@ -204,3 +213,6 @@ class Sigmoid(Model):
 
     def forward(self, input):
         return input.sigmoid()
+
+    def get_parameters(self):
+        return []
