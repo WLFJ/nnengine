@@ -100,8 +100,6 @@ class Op:
     def __init__(self, args):
         self.input: [Tensor] = args
         self.output = None
-        self.calc()
-        self.add_dependency()
         self.grad_fn = []
 
     def calc(self):
@@ -117,9 +115,9 @@ class Op:
         for i in range(len(self.input)):
             output_id = id(self.output)
             if id(self.output) not in self.input[i].dependents:
-                self.input[i][output_id] = 1
+                self.input[i].dependents[output_id] = 1
             else:
-                self.input[i][output_id] += 1
+                self.input[i].dependents[output_id] += 1
 
 
 class AddOp(Op):
@@ -130,6 +128,8 @@ class AddOp(Op):
             lambda grad, out, args: grad * np.ones_like(args[0].data),
             lambda grad, out, args: grad * np.ones_like(args[1].data)
         ]
+        self.calc()
+        self.add_dependency()
 
     def calc(self) -> Tensor:
         if self.output is None:
@@ -145,6 +145,8 @@ class SubOp(Op):
             lambda grad, out, args: grad * np.ones_like(args[0].data),
             lambda grad, out, args: grad * -np.ones_like(args[1].data)
         ]
+        self.calc()
+        self.add_dependency()
 
     def calc(self) -> Tensor:
         if self.output is None:
@@ -160,6 +162,8 @@ class MulOp(Op):
             lambda grad, out, args: grad * args[1].data,
             lambda grad, out, args: grad * args[0].data
         ]
+        self.calc()
+        self.add_dependency()
 
     def calc(self) -> Tensor:
         if self.output is None:
@@ -174,6 +178,8 @@ class NegOp(Op):
         self.grad_fn = [
             lambda grad, out, args: grad * -np.ones_like(args[0].data)
         ]
+        self.calc()
+        self.add_dependency()
 
     def calc(self) -> Tensor:
         if self.output is None:
@@ -189,6 +195,8 @@ class MatMulOp(Op):
             lambda grad, out, args: grad @ args[1].data.transpose(),
             lambda grad, out, args: args[0].data.transpose() @ grad
         ]
+        self.calc()
+        self.add_dependency()
 
     def calc(self) -> Tensor:
         if self.output is None:
@@ -203,6 +211,8 @@ class SigmoidOp(Op):
         self.grad_fn = [
             lambda grad, out, args: grad * out.data * (1 - out.data)
         ]
+        self.calc()
+        self.add_dependency()
 
     def calc(self):
         if self.output is None:
@@ -217,6 +227,8 @@ class TanhOp(Op):
         self.grad_fn = [
             lambda grad, out, args: 1 - out.data * out.data
         ]
+        self.calc()
+        self.add_dependency()
 
     def calc(self):
         if self.output is None:
@@ -233,6 +245,8 @@ class TransposeOp(Op):
         self.grad_fn = [
             lambda grad, out, args: grad.transpose(self.axes)
         ]
+        self.calc()
+        self.add_dependency()
 
     def calc(self):
         if self.output is None:
@@ -241,14 +255,16 @@ class TransposeOp(Op):
 
 
 class SumOp(Op):
-    grad_fn = [
-        lambda grad, args: np.ones_like(args[0].data)
-    ]
 
     def __init__(self, t: Tensor, dim: int):
         super(SumOp, self).__init__([t])
         assert dim < len(t.data.shape)
         self.dim = dim
+        self.grad_fn = [
+            lambda grad, args: np.ones_like(args[0].data)
+        ]
+        self.calc()
+        self.add_dependency()
 
     def calc(self):
         if self.output is None:
@@ -257,14 +273,16 @@ class SumOp(Op):
 
 
 class MaxOp(Op):
-    grad_fn = [
-        lambda grad, args: np.ones_like(args[0].data)
-    ]
 
     def __init__(self, t: Tensor, dim: int):
         super(MaxOp, self).__init__([t])
         assert dim < len(t.data.shape)
+        self.grad_fn = [
+            lambda grad, args: np.ones_like(args[0].data)
+        ]
         self.dim = dim
+        self.calc()
+        self.add_dependency()
 
     def calc(self):
         if self.output is None:
@@ -273,14 +291,16 @@ class MaxOp(Op):
 
 
 class MeanOp(Op):
-    grad_fn = [
-        lambda grad, args: np.ones_like(args[0].data)
-    ]
 
     def __init__(self, t: Tensor, dim: int):
         super(MeanOp, self).__init__([t])
         assert dim < len(t.data.shape)
         self.dim = dim
+        self.grad_fn = [
+            lambda grad, args: np.ones_like(args[0].data)
+        ]
+        self.calc()
+        self.add_dependency()
 
     def calc(self):
         if self.output is None:
