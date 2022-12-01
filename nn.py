@@ -45,7 +45,7 @@ class Linear(Layer):
         self.parameters.append(self.bias)
 
     def forward(self, input):
-        return input.mm(self.weight) + self.bias.expand(0, len(input.data))
+        return input.mm(self.weight) + self.bias
 
 
 class Conv2d(Layer):
@@ -179,12 +179,12 @@ def LSTM(Layer):
         self.hidden = hidden
         self.input = input
 
-        self.ih = input.mm(self.W_ih) + self.bias_h.expand(0, len(input.data))
+        self.ih = input.mm(self.W_ih) + self.bias_h
         self.hh = self.hidden.mm(self.W_hh)
         self.h = self.ih + self.hh
         self.h.tanh()
 
-        self.y = self.h.mm(self.W_hy) + self.bias_y.expand(0, len(input.data))
+        self.y = self.h.mm(self.W_hy) + self.bias_y
         self.y.softmax(dim=1)
 
         return self.y, self.h
