@@ -83,7 +83,7 @@ class Tensor(object):
         op: Op = MaxOp(self, axis)
         return op.calc()
 
-    def mean(self, axis: list):
+    def mean(self, dim):
         op: Op = MeanOp(self, dim)
         return op.calc()
 
