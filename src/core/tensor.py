@@ -58,6 +58,22 @@ class Tensor(object):
         op: Op = MatMulOp(self, x)
         return op.calc()
 
+    def exp(self):
+        op: Op = ExpOp(self)
+        return op.calc()
+
+    def log(self):
+        op: Op = LogOp(self)
+        return op.calc()
+
+    def sin(self):
+        op: Op = SinOp(self)
+        return op.calc()
+
+    def cos(self):
+        op: Op = CosOp(self)
+        return op.calc()
+
     def sigmoid(self):
         op: Op = SigmoidOp(self)
         return op.calc()
@@ -204,6 +220,66 @@ class MatMulOp(Op):
         return self.output
 
 
+class ExpOp(Op):
+    def __init__(self, t: Tensor):
+        super(ExpOp, self).__init__([t])
+        self.grad_fn = [
+            lambda grad, out, args: grad * out.data
+        ]
+        self.calc()
+        self.add_dependency()
+
+    def calc(self):
+        if self.output is None:
+            self.output: Tensor = Tensor(np.exp(self.input[0].data))
+        return self.output
+
+
+class LogOp(Op):
+    def __init__(self, t: Tensor):
+        super(LogOp, self).__init__([t])
+        self.grad_fn = [
+            lambda grad, out, args: grad / args[0].data
+        ]
+        self.calc()
+        self.add_dependency()
+
+    def calc(self):
+        if self.output is None:
+            self.output: Tensor = Tensor(np.log(self.input[0].data))
+        return self.output
+
+
+class SinOp(Op):
+    def __init__(self, t: Tensor):
+        super(SinOp, self).__init__([t])
+        self.grad_fn = [
+            lambda grad, out, args: grad * np.cos(args[0].data)
+        ]
+        self.calc()
+        self.add_dependency()
+
+    def calc(self):
+        if self.output is None:
+            self.output: Tensor = Tensor(np.sin(self.input[0].data))
+        return self.output
+
+
+class CosOp(Op):
+    def __init__(self, t: Tensor):
+        super(CosOp, self).__init__([t])
+        self.grad_fn = [
+            lambda grad, out, args: grad * -np.sin(args[0].data)
+        ]
+        self.calc()
+        self.add_dependency()
+
+    def calc(self):
+        if self.output is None:
+            self.output: Tensor = Tensor(np.cos(self.input[0].data))
+        return self.output
+
+
 class SigmoidOp(Op):
 
     def __init__(self, t: Tensor):
@@ -225,7 +301,7 @@ class TanhOp(Op):
     def __init__(self, t: Tensor):
         super(TanhOp, self).__init__([t])
         self.grad_fn = [
-            lambda grad, out, args: 1 - out.data * out.data
+            lambda grad, out, args: grad * (1 - out.data * out.data)
         ]
         self.calc()
         self.add_dependency()
@@ -306,3 +382,31 @@ class MeanOp(Op):
         if self.output is None:
             self.output: Tensor = Tensor(self.input[0].data.mean(axis=self.dim))
         return self.output
+
+
+def log(t: Tensor) -> Tensor:
+    return t.log()
+
+
+def exp(t: Tensor) -> Tensor:
+    return t.exp()
+
+
+def sin(t: Tensor) -> Tensor:
+    return t.sin()
+
+
+def cos(t: Tensor) -> Tensor:
+    return t.cos()
+
+
+def tanh(t: Tensor) -> Tensor:
+    return t.tanh()
+
+
+def sigmoid(t: Tensor) -> Tensor:
+    return t.sigmoid()
+
+
+def mm(t1: Tensor, t2: Tensor) -> Tensor:
+    return t1.mm(t2)
