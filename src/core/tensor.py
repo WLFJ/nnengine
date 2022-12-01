@@ -99,6 +99,10 @@ class Tensor(object):
 
         return Tensor(self.data.transpose())
 
+    def abs(self):
+        op: Op = AbsOp(self)
+        return op.calc()
+
     def sum(self, dim):
         op: Op = SumOp(self, dim)
         return op.calc()
@@ -353,6 +357,21 @@ class TransposeOp(Op):
         return self.output
 
 
+class AbsOp(Op):
+    def __init__(self, t: Tensor):
+        super(AbsOp, self).__init__([t])
+        self.grad_fn = [
+            lambda grad, out, args: grad * np.sign(args[0].data)
+        ]
+        self.calc()
+        self.add_dependency()
+
+    def calc(self):
+        if self.output is None:
+            self.output: Tensor = Tensor(np.abs(self.input[0].data))
+        return self.output
+
+
 class SumOp(Op):
 
     def __init__(self, t: Tensor, dim: int):
@@ -457,6 +476,10 @@ def mm(t1: Tensor, t2: Tensor) -> Tensor:
 
 def softmax(t: Tensor) -> Tensor:
     return t.softmax()
+
+
+def abs(t: Tensor) -> Tensor:
+    return t.abs()
 
 
 def sum(t: Tensor, dim: int) -> Tensor:
