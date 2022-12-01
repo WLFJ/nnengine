@@ -261,7 +261,7 @@ class SumOp(Op):
         assert dim < len(t.data.shape)
         self.dim = dim
         self.grad_fn = [
-            lambda grad, args: np.ones_like(args[0].data)
+            lambda grad, out, args: grad * np.ones_like(args[0].data)
         ]
         self.calc()
         self.add_dependency()
@@ -278,7 +278,7 @@ class MaxOp(Op):
         super(MaxOp, self).__init__([t])
         assert dim < len(t.data.shape)
         self.grad_fn = [
-            lambda grad, args: np.ones_like(args[0].data)
+            lambda grad, out, args: grad * np.ones_like(args[0].data)
         ]
         self.dim = dim
         self.calc()
@@ -297,7 +297,7 @@ class MeanOp(Op):
         assert dim < len(t.data.shape)
         self.dim = dim
         self.grad_fn = [
-            lambda grad, args: np.ones_like(args[0].data)
+            lambda grad, out, args: grad * np.ones_like(args[0].data)
         ]
         self.calc()
         self.add_dependency()
