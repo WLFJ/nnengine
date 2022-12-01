@@ -1,8 +1,3 @@
-import tensor
-
-from nn import Layer
-
-
 class Evaluator(object):
     def __init__(self):
         self.loss = 0

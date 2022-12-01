@@ -1,6 +1,6 @@
-from tensor import Tensor
+from src.core.tensor import Tensor
 
-from nn import Linear
+from src.core.nn import Linear
 
 import numpy as np
 
