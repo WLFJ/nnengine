@@ -154,6 +154,14 @@ class Tensor(object):
             t2 = other
         return t1, t2
 
+    def squeeze(self, dim):
+        op: Op = SqueezeOp(self, dim)
+        return op.calc()
+
+    def unsqueeze(self, dim):
+        op: Op = UnsqueezeOp(self, dim)
+        return op.calc()
+
     def __repr__(self):
         return str(self.data.__repr__())
 
@@ -527,6 +535,38 @@ class BroadcastOp(Op):
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(np.broadcast_to(self.input[0].data, self.shape), creation_op=self)
+        return self.output
+
+
+class SqueezeOp(Op):
+    def __init__(self, t: Tensor, axis: int):
+        super(SqueezeOp, self).__init__([t])
+        self.axis = axis
+        self.grad_fn = [
+            lambda grad, out, args: grad.reshape(args[0].data.shape)
+        ]
+        self.calc()
+        self.add_dependency()
+
+    def calc(self):
+        if self.output is None:
+            self.output: Tensor = Tensor(np.squeeze(self.input[0].data, axis=self.axis), creation_op=self)
+        return self.output
+
+
+class UnsqueezeOp(Op):
+    def __init__(self, t: Tensor, axis: int):
+        super(UnsqueezeOp, self).__init__([t])
+        self.axis = axis
+        self.grad_fn = [
+            lambda grad, out, args: grad.reshape(args[0].data.shape)
+        ]
+        self.calc()
+        self.add_dependency()
+
+    def calc(self):
+        if self.output is None:
+            self.output: Tensor = Tensor(np.expand_dims(self.input[0].data, axis=self.axis), creation_op=self)
         return self.output
 
 
