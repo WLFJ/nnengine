@@ -642,5 +642,3 @@ def mean(t: Tensor, dim: int) -> Tensor:
     return t.mean(dim)
 
 
-def transpose(t: Tensor, axes: [int] = None) -> Tensor:
-    return t.transpose(axes)
