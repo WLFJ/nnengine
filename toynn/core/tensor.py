@@ -94,10 +94,6 @@ class Tensor(object):
         op: Op = SoftmaxOp(self)
         return op.calc()
 
-    def transpose(self):
-        op: Op = TransposeOp(self)
-        return op.calc()
-
     def abs(self):
         op: Op = AbsOp(self)
         return op.calc()
@@ -160,6 +156,14 @@ class Tensor(object):
 
     def unsqueeze(self, dim):
         op: Op = UnsqueezeOp(self, dim)
+        return op.calc()
+
+    def transpose(self):
+        op: Op = TransposeOp(self)
+        return op.calc()
+
+    def reshape(self):
+        op: Op = ReshapeOp(self)
         return op.calc()
 
     def __repr__(self):
@@ -407,25 +411,6 @@ class ReLuOp(Op):
         return self.output
 
 
-class TransposeOp(Op):
-
-    def __init__(self, t: Tensor, axes: [int] = None):
-        super(TransposeOp, self).__init__([t])
-        self.axes = axes
-        self.grad_fn = [
-            lambda grad, out, args: grad.transpose(
-                list(range(len(axes.shape))).sort(key=lambda x: self.axes[x])
-            )
-        ]
-        self.calc()
-        self.add_dependency()
-
-    def calc(self):
-        if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data.transpose(self.axes), creation_op=self)
-        return self.output
-
-
 class AbsOp(Op):
     def __init__(self, t: Tensor):
         super(AbsOp, self).__init__([t])
@@ -567,6 +552,41 @@ class UnsqueezeOp(Op):
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(np.expand_dims(self.input[0].data, axis=self.axis), creation_op=self)
+        return self.output
+
+
+class TransposeOp(Op):
+
+    def __init__(self, t: Tensor, axes: [int] = None):
+        super(TransposeOp, self).__init__([t])
+        self.axes = axes
+        self.grad_fn = [
+            lambda grad, out, args: grad.transpose(
+                list(range(len(axes.shape))).sort(key=lambda x: self.axes[x])
+            )
+        ]
+        self.calc()
+        self.add_dependency()
+
+    def calc(self):
+        if self.output is None:
+            self.output: Tensor = Tensor(self.input[0].data.transpose(self.axes), creation_op=self)
+        return self.output
+
+
+class ReshapeOp(Op):
+    def __init__(self, t: Tensor, shape: [int]):
+        super(ReshapeOp, self).__init__([t])
+        self.shape = shape
+        self.grad_fn = [
+            lambda grad, out, args: grad.reshape(args[0].data.shape)
+        ]
+        self.calc()
+        self.add_dependency()
+
+    def calc(self):
+        if self.output is None:
+            self.output: Tensor = Tensor(self.input[0].data.reshape(self.shape), creation_op=self)
         return self.output
 
 
