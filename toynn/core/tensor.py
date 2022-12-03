@@ -404,9 +404,10 @@ class TransposeOp(Op):
     def __init__(self, t: Tensor, axes: [int] = None):
         super(TransposeOp, self).__init__([t])
         self.axes = axes
-
         self.grad_fn = [
-            lambda grad, out, args: grad.transpose(self.axes)
+            lambda grad, out, args: grad.transpose(
+                list(range(len(axes.shape))).sort(key=lambda x: self.axes[x])
+            )
         ]
         self.calc()
         self.add_dependency()
