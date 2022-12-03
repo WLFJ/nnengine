@@ -47,10 +47,10 @@ class DataLoader(object):
             batch = []
             for i in range(self.batch_size):
                 idx = self.indexes[self.index * self.batch_size + i]
-                batch.append(
-                    Batch(self.dataset[idx][:-1], self.dataset[idx][-1])
-                )
-                self.index += 1
+                batch.append(self.dataset[idx])
+            batch = np.array(batch)
+            batch = Batch(batch[..., :-1], batch[..., -1:])
+            self.index += 1
             return batch
         else:
             self.index = 0

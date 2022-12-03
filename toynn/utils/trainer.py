@@ -28,8 +28,8 @@ class Trainer(object):
             train_loss = self._train_epoch(train_dataloader)
             eval_loss = self._eval_epoch(eval_dataloader)
 
-            bar.set_description("Epoch: " + epoch_idx + ', training loss: ' + train_loss
-                                + ', validation loss: ' + eval_loss)
+            bar.set_description("Epoch: {}, ".format(epoch_idx) + 'training loss: {},'.format(train_loss) +
+                                'validation loss: {}'.format(eval_loss))
 
             if self.sche is not None:
                 self.sche.step(eval_loss)
@@ -44,8 +44,8 @@ class Trainer(object):
         losses = []
         for batch in train_dataloader:
             y_truth = Tensor(batch.labels, autograd=True)
-            y_pred = self.m(Tensor(batch.data, autograd=True))
-            loss: Tensor = self.lf(y_pred, Tensor(y_truth))
+            y_pred = self.m(Tensor(batch.data, autograd=False))
+            loss: Tensor = self.lf(y_pred, y_truth)
             loss.backward()
             self.opt.step(loss)
             losses.append(loss.data)
@@ -55,8 +55,8 @@ class Trainer(object):
         losses = []
         for batch in eval_dataloader:
             y_truth = Tensor(batch.labels, autograd=True)
-            y_pred = self.m(Tensor(batch.data, autograd=True))
-            loss: Tensor = self.lf(y_pred, Tensor(y_truth, autograd=False))
+            y_pred = self.m(Tensor(batch.data, autograd=False))
+            loss: Tensor = self.lf(y_pred, y_truth)
             losses.append(loss.data)
         return np.mean(losses)
 

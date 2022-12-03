@@ -12,4 +12,4 @@ def maeLoss(pred: Tensor, target: Tensor) -> Tensor:
 
 
 def crossEntropyLoss(pred: Tensor, target: Tensor) -> Tensor:
-    return -target * pred.log() - (Tensor(np.ones_like(pred)) - target) * (Tensor(np.ones_like(pred)) - pred).log()
+    return -target * pred.log() - (Tensor(np.ones_like(pred.data)) - target) * pred.log()

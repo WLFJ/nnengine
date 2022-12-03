@@ -5,10 +5,16 @@ import numpy as np
 class Model(object):
 
     def __init__(self):
-        self.parameters = list()
+        pass
 
     def get_parameters(self):
-        return self.parameters
+        return list()
+
+    def forward(self, input):
+        return input
+
+    def __call__(self, *args, **kwargs):
+        return self.forward(*args, **kwargs)
 
 
 class Sequential(Model):

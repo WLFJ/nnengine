@@ -1,6 +1,6 @@
 from toynn.core.nn import Model, Sequential, Linear, Conv2d
 from toynn.data import split
-from toynn.utils import crossEntropyLoss
+from toynn.utils import mseLoss, maeLoss, crossEntropyLoss
 from toynn.core.nn import Linear
 
 import numpy as np
@@ -9,9 +9,9 @@ from toynn.utils import SGD, Trainer
 
 m = Linear(2, 1)
 
-data = np.randn(100, 2)
+data = np.random.randn(100, 2)
 
-labels = np.randn(100, 1)
+labels = data[:, 0:1] + 10 * data[:, 1:2]
 
 dataset = np.concatenate([data, labels], axis=1)
 
@@ -19,10 +19,12 @@ train_dataset, test_dataset = split(dataset, 0.8)
 
 opt = SGD(parameters=m.get_parameters(), lr=0.01)
 
-trainer = Trainer(m, opt, crossEntropyLoss, {
-    "epochs": 10,
+trainer = Trainer(m, opt, mseLoss, {
+    "epochs": 100,
     "batch_size": 10,
     "shuffle": True
 })
 
 loss = trainer.train(train_dataset, test_dataset)
+
+print(loss)

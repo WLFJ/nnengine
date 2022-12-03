@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.special
 
 
 class Tensor(object):
@@ -51,6 +52,10 @@ class Tensor(object):
 
     def __mul__(self, other):
         op: Op = MulOp(self, other)
+        return op.calc()
+
+    def __truediv__(self, other):
+        op: Op = DivOp(self, other)
         return op.calc()
 
     def mm(self, x):
@@ -109,6 +114,46 @@ class Tensor(object):
         op: Op = MeanOp(self, dim)
         return op.calc()
 
+    def broadcast(self, other):
+        if self.shape == other.shape:
+            return self, other
+
+        s1 = list(self.shape)
+        s2 = list(other.shape)
+        if len(s1) > len(s2):
+            s2 = [1] * (len(s1) - len(s2)) + s2
+            if s1 == s2:
+                t = BroadcastOp(other, self.shape).calc()
+                return t, other
+        else:
+            s1 = [1] * (len(s2) - len(s1)) + s1
+            if s1 == s2:
+                t = BroadcastOp(self, other.shape).calc()
+                return self, t
+
+        s = []
+        for i in range(len(s1)):
+            if s1[i] != s2[i]:
+                if s1[i] == 1:
+                    s.append(s2[i])
+                elif s2[i] == 1:
+                    s.append(s1[i])
+                else:
+                    raise Exception("cannot broadcast")
+            else:
+                s.append(s1[i])
+
+        if s != list(self.shape):
+            t1 = BroadcastOp(self, s).calc()
+        else:
+            t1 = self
+
+        if s != list(other.shape):
+            t2 = BroadcastOp(other, s).calc()
+        else:
+            t2 = other
+        return t1, t2
+
     def __repr__(self):
         return str(self.data.__repr__())
 
@@ -131,7 +176,7 @@ class Op:
         assert len(self.input) == len(self.grad_fn)
 
         for i in range(len(self.input)):
-            self.input[i].backward(self.grad_fn[i](grad, self.output, self.input), id(self.input[i]))
+            self.input[i].backward(self.grad_fn[i](grad, self.output, self.input), id(self.output))
 
     def add_dependency(self):
         for i in range(len(self.input)):
@@ -145,6 +190,7 @@ class Op:
 class AddOp(Op):
 
     def __init__(self, t1: Tensor, t2: Tensor):
+        t1, t2 = t1.broadcast(t2)
         super(AddOp, self).__init__([t1, t2])
         self.grad_fn = [
             lambda grad, out, args: grad * np.ones_like(args[0].data),
@@ -155,13 +201,14 @@ class AddOp(Op):
 
     def calc(self) -> Tensor:
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data + self.input[1].data)
+            self.output: Tensor = Tensor(self.input[0].data + self.input[1].data, creation_op=self)
         return self.output
 
 
 class SubOp(Op):
 
     def __init__(self, t1: Tensor, t2: Tensor):
+        t1, t2 = t1.broadcast(t2)
         super(SubOp, self).__init__([t1, t2])
         self.grad_fn = [
             lambda grad, out, args: grad * np.ones_like(args[0].data),
@@ -172,13 +219,14 @@ class SubOp(Op):
 
     def calc(self) -> Tensor:
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data - self.input[1].data)
+            self.output: Tensor = Tensor(self.input[0].data - self.input[1].data, creation_op=self)
         return self.output
 
 
 class MulOp(Op):
 
     def __init__(self, t1: Tensor, t2: Tensor):
+        t1, t2 = t1.broadcast(t2)
         super(MulOp, self).__init__([t1, t2])
         self.grad_fn = [
             lambda grad, out, args: grad * args[1].data,
@@ -189,7 +237,25 @@ class MulOp(Op):
 
     def calc(self) -> Tensor:
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data * self.input[1].data)
+            self.output: Tensor = Tensor(self.input[0].data * self.input[1].data, creation_op=self)
+        return self.output
+
+
+class DivOp(Op):
+
+    def __init__(self, t1: Tensor, t2: Tensor):
+        t1, t2 = t1.broadcast(t2)
+        super(DivOp, self).__init__([t1, t2])
+        self.grad_fn = [
+            lambda grad, out, args: grad / args[1].data,
+            lambda grad, out, args: grad * -args[0].data / (args[1].data * args[1].data)
+        ]
+        self.calc()
+        self.add_dependency()
+
+    def calc(self) -> Tensor:
+        if self.output is None:
+            self.output: Tensor = Tensor(self.input[0].data / self.input[1].data, creation_op=self)
         return self.output
 
 
@@ -205,7 +271,7 @@ class NegOp(Op):
 
     def calc(self) -> Tensor:
         if self.output is None:
-            self.output: Tensor = Tensor(-self.input[0].data)
+            self.output: Tensor = Tensor(-self.input[0].data, creation_op=self)
         return self.output
 
 
@@ -222,7 +288,7 @@ class MatMulOp(Op):
 
     def calc(self) -> Tensor:
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data.dot(self.input[1].data))
+            self.output: Tensor = Tensor(self.input[0].data.dot(self.input[1].data), creation_op=self)
         return self.output
 
 
@@ -237,7 +303,7 @@ class ExpOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(np.exp(self.input[0].data))
+            self.output: Tensor = Tensor(np.exp(self.input[0].data), creation_op=self)
         return self.output
 
 
@@ -252,7 +318,7 @@ class LogOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(np.log(self.input[0].data))
+            self.output: Tensor = Tensor(np.log(self.input[0].data), creation_op=self)
         return self.output
 
 
@@ -267,7 +333,7 @@ class SinOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(np.sin(self.input[0].data))
+            self.output: Tensor = Tensor(np.sin(self.input[0].data), creation_op=self)
         return self.output
 
 
@@ -275,14 +341,14 @@ class CosOp(Op):
     def __init__(self, t: Tensor):
         super(CosOp, self).__init__([t])
         self.grad_fn = [
-            lambda grad, out, args: grad * -np.sin(args[0].data)
+            lambda grad, out, args: grad * -np.sin(args[0].data, creation_op=self)
         ]
         self.calc()
         self.add_dependency()
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(np.cos(self.input[0].data))
+            self.output: Tensor = Tensor(np.cos(self.input[0].data), creation_op=self)
         return self.output
 
 
@@ -298,7 +364,7 @@ class SigmoidOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(1 / (1 + np.exp(-self.input[0].data)))
+            self.output: Tensor = Tensor(1 / (1 + np.exp(-self.input[0].data)), creation_op=self)
         return self.output
 
 
@@ -314,7 +380,7 @@ class TanhOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(np.tanh(self.input[0].data))
+            self.output: Tensor = Tensor(np.tanh(self.input[0].data), creation_op=self)
         return self.output
 
 
@@ -329,7 +395,7 @@ class ReLuOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(np.maximum(self.input[0].data, 0))
+            self.output: Tensor = Tensor(np.maximum(self.input[0].data, 0), creation_op=self)
         return self.output
 
 
@@ -347,7 +413,7 @@ class TransposeOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data.transpose(self.axes))
+            self.output: Tensor = Tensor(self.input[0].data.transpose(self.axes), creation_op=self)
         return self.output
 
 
@@ -362,7 +428,7 @@ class AbsOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(np.abs(self.input[0].data))
+            self.output: Tensor = Tensor(np.abs(self.input[0].data), creation_op=self)
         return self.output
 
 
@@ -380,7 +446,7 @@ class SumOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data.sum(axis=self.dim))
+            self.output: Tensor = Tensor(self.input[0].data.sum(axis=self.dim), creation_op=self)
         return self.output
 
 
@@ -398,7 +464,7 @@ class MaxOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data.max(axis=self.dim))
+            self.output: Tensor = Tensor(self.input[0].data.max(axis=self.dim), creation_op=self)
         return self.output
 
 
@@ -409,30 +475,57 @@ class MeanOp(Op):
         assert dim < len(t.data.shape)
         self.dim = dim
         self.grad_fn = [
-            lambda grad, out, args: grad * np.ones_like(args[0].data)
+            lambda grad, out, args: grad * np.ones_like(args[0].data) / args[0].data.shape[self.dim]
         ]
         self.calc()
         self.add_dependency()
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data.mean(axis=self.dim))
+            self.output: Tensor = Tensor(self.input[0].data.mean(axis=self.dim), creation_op=self)
         return self.output
 
 
+# TODO softmax 可以指定维度
 class SoftmaxOp(Op):
 
     def __init__(self, t: Tensor):
         super(SoftmaxOp, self).__init__([t])
         self.grad_fn = [
-            lambda grad, out, args: grad * out.data * (1 - out.data)
+            lambda grad, out, args: out.data * (grad - np.sum(grad * out.data, axis=-1, keepdims=True))
         ]
         self.calc()
         self.add_dependency()
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(np.softmax(self.input[0].data))
+            self.output: Tensor = Tensor(scipy.special.softmax(self.input[0].data, axis=-1), creation_op=self)
+        return self.output
+
+
+class BroadcastOp(Op):
+    def __init__(self, t: Tensor, shape: [int]):
+        super(BroadcastOp, self).__init__([t])
+        self.shape = shape
+        self.axes = []
+        if len(shape) > len(t.shape):
+            self.axes = list(range(len(shape) - len(t.shape)))
+
+        offset = len(shape) - len(t.shape)
+        for i in range(len(t.shape)):
+            if t.shape[i] != shape[i + offset]:
+                self.axes.append(i + offset)
+
+        self.axes = tuple(self.axes)
+        self.grad_fn = [
+            lambda grad, out, args: grad.sum(axis=self.axes)
+        ]
+        self.calc()
+        self.add_dependency()
+
+    def calc(self):
+        if self.output is None:
+            self.output: Tensor = Tensor(np.broadcast_to(self.input[0].data, self.shape), creation_op=self)
         return self.output
 
 
