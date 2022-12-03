@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from toynn.core import *
+from toynn.core import Tensor
 
 
 class TestTensor:
