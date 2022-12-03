@@ -457,7 +457,7 @@ class MaxOp(Op):
         super(MaxOp, self).__init__([t])
         assert dim < len(t.data.shape)
         self.grad_fn = [
-            lambda grad, out, args: grad * np.ones_like(args[0].data)
+            lambda grad, out, args: grad * (args[0].data == out.data)
         ]
         self.dim = dim
         self.calc()
