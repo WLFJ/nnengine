@@ -58,6 +58,12 @@ class Tensor(object):
         op: Op = DivOp(self, other)
         return op.calc()
 
+    def __pow__(self, power):
+        if not isinstance(power, Tensor):
+            power = Tensor(power, autograd=False)
+        op: Op = PowOp(self, power)
+        return op.calc()
+
     def mm(self, x):
         op: Op = MatMulOp(self, x)
         return op.calc()
@@ -162,8 +168,8 @@ class Tensor(object):
         op: Op = TransposeOp(self)
         return op.calc()
 
-    def reshape(self):
-        op: Op = ReshapeOp(self)
+    def reshape(self, shape):
+        op: Op = ReshapeOp(self, shape)
         return op.calc()
 
     def __repr__(self):
@@ -268,6 +274,24 @@ class DivOp(Op):
     def calc(self) -> Tensor:
         if self.output is None:
             self.output: Tensor = Tensor(self.input[0].data / self.input[1].data, creation_op=self)
+        return self.output
+
+
+class PowOp(Op):
+
+    def __init__(self, t1: Tensor, t2: Tensor):
+        t1, t2 = t1.broadcast(t2)
+        super(PowOp, self).__init__([t1, t2])
+        self.grad_fn = [
+            lambda grad, out, args: grad * args[1].data * np.power(args[0].data, args[1].data - 1),
+            lambda grad, out, args: grad * np.log(args[0].data) * np.power(args[0].data, args[1].data)
+        ]
+        self.calc()
+        self.add_dependency()
+
+    def calc(self) -> Tensor:
+        if self.output is None:
+            self.output: Tensor = Tensor(np.power(self.input[0].data, self.input[1].data), creation_op=self)
         return self.output
 
 
@@ -640,5 +664,3 @@ def max(t: Tensor, dim: int) -> Tensor:
 
 def mean(t: Tensor, dim: int) -> Tensor:
     return t.mean(dim)
-
-
