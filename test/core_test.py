@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from toynn.core import Tensor, Linear
-from toynn.utils import SGD
+from toynn.frame import SGD, Adam
 
 
 class TestTensor:
@@ -39,15 +39,16 @@ class TestNN:
             autograd=False
         )
         m = Linear(3, 1)
-        opt = SGD(parameters=m.get_parameters(), lr=0.1)
+        opt = Adam(parameters=m.get_parameters(), lr=0.01)
         pred = m(data)
-        for i in range(100):
+        for i in range(1000):
             loss = ((pred - Tensor(1.)) ** 2.).sum(0)
             loss.backward()
             opt.step()
             pred = m(data)
 
         assert (pred.data - np.ones((10, 1)) < 1e-5).all()
+
 
 if __name__ == '__main__':
     pytest.main()
