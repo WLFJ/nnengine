@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
 
-from toynn.core import Tensor
+from toynn.core import Tensor, Linear
+from toynn.utils import SGD
 
 
 class TestTensor:
@@ -30,6 +31,23 @@ class TestTensor:
         assert (t1.grad == np.array([1, 1, 1])).all()
         assert (t2.grad == np.array([-1, -1, -1])).all()
 
+
+class TestNN:
+    def test_linear(self):
+        data = Tensor(
+            np.random.randn(10, 3),
+            autograd=False
+        )
+        m = Linear(3, 1)
+        opt = SGD(parameters=m.get_parameters(), lr=0.1)
+        pred = m(data)
+        for i in range(100):
+            loss = ((pred - Tensor(1.)) ** 2.).sum(0)
+            loss.backward()
+            opt.step()
+            pred = m(data)
+
+        assert (pred.data - np.ones((10, 1)) < 1e-5).all()
 
 if __name__ == '__main__':
     pytest.main()
