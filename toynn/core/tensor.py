@@ -164,8 +164,8 @@ class Tensor(object):
         op: Op = UnsqueezeOp(self, dim)
         return op.calc()
 
-    def transpose(self):
-        op: Op = TransposeOp(self)
+    def transpose(self, axes: list):
+        op: Op = TransposeOp(self, axes)
         return op.calc()
 
     def reshape(self, shape):
