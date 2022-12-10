@@ -16,6 +16,8 @@ class Tensor(object):
         self.creation_op = creation_op
         self.dependents = {}
 
+        self.tcg_id = TcGraph.AddTensor(self)
+
     def all_children_grads_accounted_for(self):
         for cnt in self.dependents.values():
             if cnt != 0:
@@ -179,10 +181,140 @@ class Tensor(object):
         return str(self.data.__str__())
 
 
+class TcGraph:
+    instance = None
+
+    def __init__(self):
+        self.tmap = dict()
+        # (op_name, (input1, input2, ...), (output1, output2, ...))
+        self.graph = list()
+
+    @classmethod
+    def get_instantce(cls):
+        if not cls.instance:
+            cls.instance = TcGraph()
+
+        return cls.instance
+
+    @classmethod
+    def GetTensor(cls, t):
+        return cls.get_instantce().getTensor(t)
+
+    @classmethod
+    def Compile(cls):
+        return cls.get_instantce().compile()
+
+    @classmethod
+    def Clear(cls):
+        return cls.get_instantce().clear()
+
+    def compile(self):
+        '''
+        Convert TcGraph into T-Lang program.
+        '''
+
+        graph = self.graph
+        tensor_dict = dict(map(reversed, self.tmap.items()))
+
+        op_list = ['def main(){\n']
+
+        tensor_input = set()
+        tensor_mid = set()
+
+        for (_, __, out) in graph:
+            tensor_mid.update(out)
+
+        for (_, inp, __) in graph:
+            tensor_input.update(set(inp).difference(tensor_mid))
+
+        # create all input tensor
+        for id in tensor_input:
+            t = tensor_dict[id]
+            shape = 'x'.join(str(d) for d in t.data.shape)
+            data = ', '.join(str(e) for e in t.data.flat)
+            op = f'  var v{id}<{shape}> = [{data}];\n'
+            op_list.append(op)
+
+        while True:
+            # if graph not empty, find all which input all generated.
+            is_emitable = False
+            for (name, inp, out) in graph:
+                assert len(out) == 1 and "for now only support 1 result."
+                out = out[0]
+
+                is_emitable = out not in tensor_input and set(inp).issubset(tensor_input)
+                params = ', '.join(f'v{tid}' for tid in inp)
+
+                if is_emitable:
+                    op = f'  var v{out} = {name}({params});\n'
+                    if name in ['add', 'matmul']:
+                        assert len(inp) == 2 and 'binop must have 2 op.'
+                        #TODO: Add more.
+                        binop_dict = {
+                            'add': '+',
+                            'matmul': '.',
+                        }
+                        op = f'  var v{out} = v{inp[0]} {binop_dict[name]} v{inp[1]};\n'
+
+                    op_list.append(op)
+
+                    tensor_input.add(out)
+                    tensor_mid.remove(out)
+
+                    # if cur op's result is the last, also emit printOp.
+                    if len(tensor_mid) == 0:
+                        op_list.append(f'  print(v{out});\n')
+            if not is_emitable:
+                break
+
+        op_list.append('}\n')
+        return ''.join(op_list)
+
+    def clear(self):
+        pass
+
+    def getTensor(self, t):
+        '''
+        return tensor internal repr id.
+        '''
+        tmap = self.tmap
+        assert type(t) == Tensor and "getTensor input only suppor Tensor."
+        if t not in tmap:
+            print('TcGraph: Warning: current tensor not managed.')
+            return self.addTensor(t)
+
+        # assert t.get_tcg_id() == tmap[t] and "tcg_id and id managed in TcGraph must be the same."
+        return tmap[t]
+
+    @classmethod
+    def AddTensor(cls, t):
+        return cls.get_instantce().addTensor(t)
+
+    def addTensor(self, t):
+        '''
+        alloc a internal repr id for given tensor.
+        '''
+        tmap = self.tmap
+        if t not in tmap:
+            tmap[t] = len(tmap)
+        return self.getTensor(t)
+
+
+    @classmethod
+    def AddOp(cls, op_name, inputs, outputs):
+        return cls.get_instantce().addOp(op_name, inputs, outputs)
+
+    def addOp(self, op_name, inputs, outputs):
+        self.graph.append((op_name,
+            tuple(self.getTensor(i) for i in inputs),
+            tuple(self.addTensor(o) for o in outputs)
+            ))
+
+
 # TODO grad_fn 是否支持静态、动态重载
 class Op:
 
-    def __init__(self, args):
+    def __init__(self, args, tcc_opname='unsupported'):
         self.input: [Tensor] = args
         self.output = None
         self.grad_fn = []
@@ -220,6 +352,7 @@ class AddOp(Op):
     def calc(self) -> Tensor:
         if self.output is None:
             self.output: Tensor = Tensor(self.input[0].data + self.input[1].data, creation_op=self)
+            TcGraph.AddOp('add', [self.input[0], self.input[1]], [self.output])
         return self.output
 
 
@@ -238,6 +371,7 @@ class SubOp(Op):
     def calc(self) -> Tensor:
         if self.output is None:
             self.output: Tensor = Tensor(self.input[0].data - self.input[1].data, creation_op=self)
+            TcGraph.AddOp('sub', [self.input[0], self.input[1]], [self.output])
         return self.output
 
 
@@ -256,6 +390,7 @@ class MulOp(Op):
     def calc(self) -> Tensor:
         if self.output is None:
             self.output: Tensor = Tensor(self.input[0].data * self.input[1].data, creation_op=self)
+            TcGraph.AddOp('mul', [self.input[0], self.input[1]], [self.output])
         return self.output
 
 
@@ -274,6 +409,7 @@ class DivOp(Op):
     def calc(self) -> Tensor:
         if self.output is None:
             self.output: Tensor = Tensor(self.input[0].data / self.input[1].data, creation_op=self)
+            TcGraph.AddOp('div', [self.input[0], self.input[1]], [self.output])
         return self.output
 
 
@@ -292,6 +428,7 @@ class PowOp(Op):
     def calc(self) -> Tensor:
         if self.output is None:
             self.output: Tensor = Tensor(np.power(self.input[0].data, self.input[1].data), creation_op=self)
+            TcGraph.AddOp('pow', [self.input[0], self.input[1]], [self.output])
         return self.output
 
 
@@ -308,6 +445,7 @@ class NegOp(Op):
     def calc(self) -> Tensor:
         if self.output is None:
             self.output: Tensor = Tensor(-self.input[0].data, creation_op=self)
+            TcGraph.AddOp('neg', [self.input[0]], [self.output])
         return self.output
 
 
@@ -325,6 +463,7 @@ class MatMulOp(Op):
     def calc(self) -> Tensor:
         if self.output is None:
             self.output: Tensor = Tensor(self.input[0].data.dot(self.input[1].data), creation_op=self)
+            TcGraph.AddOp('matmul', [self.input[0], self.input[1]], [self.output])
         return self.output
 
 
@@ -340,6 +479,7 @@ class ExpOp(Op):
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(np.exp(self.input[0].data), creation_op=self)
+            TcGraph.AddOp('exp', [self.input[0]], [self.output])
         return self.output
 
 
@@ -355,6 +495,7 @@ class LogOp(Op):
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(np.log(self.input[0].data), creation_op=self)
+            TcGraph.AddOp('log', [self.input[0]], [self.output])
         return self.output
 
 
@@ -370,6 +511,7 @@ class SinOp(Op):
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(np.sin(self.input[0].data), creation_op=self)
+            TcGraph.AddOp('sin', [self.input[0]], [self.output])
         return self.output
 
 
@@ -385,6 +527,7 @@ class CosOp(Op):
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(np.cos(self.input[0].data), creation_op=self)
+            TcGraph.AddOp('cos', [self.input[0]], [self.output])
         return self.output
 
 
@@ -401,6 +544,7 @@ class SigmoidOp(Op):
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(1 / (1 + np.exp(-self.input[0].data)), creation_op=self)
+            TcGraph.AddOp('sigmoid', [self.input[0]], [self.output])
         return self.output
 
 
@@ -417,6 +561,7 @@ class TanhOp(Op):
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(np.tanh(self.input[0].data), creation_op=self)
+            TcGraph.AddOp('tanh', [self.input[0]], [self.output])
         return self.output
 
 
@@ -432,6 +577,7 @@ class ReLuOp(Op):
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(np.maximum(self.input[0].data, 0), creation_op=self)
+            TcGraph.AddOp('relu', [self.input[0]], [self.output])
         return self.output
 
 
@@ -447,6 +593,7 @@ class AbsOp(Op):
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(np.abs(self.input[0].data), creation_op=self)
+            TcGraph.AddOp('abs', [self.input[0]], [self.output])
         return self.output
 
 
@@ -465,6 +612,7 @@ class SumOp(Op):
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(self.input[0].data.sum(axis=self.dim), creation_op=self)
+            TcGraph.AddOp('sum', [self.input[0]], [self.output])
         return self.output
 
 
@@ -483,6 +631,7 @@ class MaxOp(Op):
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(self.input[0].data.max(axis=self.dim), creation_op=self)
+            TcGraph.AddOp('max', [self.input[0]], [self.output])
         return self.output
 
 
@@ -498,9 +647,11 @@ class MeanOp(Op):
         self.calc()
         self.add_dependency()
 
+    # TODO: TcGraph: argument config is needed.
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(self.input[0].data.mean(axis=self.dim), creation_op=self)
+            TcGraph.AddOp('mean', [self.input[0]], [self.output])
         return self.output
 
 
@@ -515,9 +666,11 @@ class SoftmaxOp(Op):
         self.calc()
         self.add_dependency()
 
+    # TODO: TcGraph: argument config is needed.
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(scipy.special.softmax(self.input[0].data, axis=-1), creation_op=self)
+            TcGraph.AddOp('softmax', [self.input[0]], [self.output])
         return self.output
 
 
@@ -544,6 +697,7 @@ class BroadcastOp(Op):
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(np.broadcast_to(self.input[0].data, self.shape), creation_op=self)
+            TcGraph.AddOp('broadcast', [self.input[0]], [self.output])
         return self.output
 
 
@@ -560,6 +714,7 @@ class SqueezeOp(Op):
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(np.squeeze(self.input[0].data, axis=self.axis), creation_op=self)
+            TcGraph.AddOp('squeeze', [self.input[0]], [self.output])
         return self.output
 
 
@@ -576,6 +731,7 @@ class UnsqueezeOp(Op):
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(np.expand_dims(self.input[0].data, axis=self.axis), creation_op=self)
+            TcGraph.AddOp('unsqueeze', [self.input[0]], [self.output])
         return self.output
 
 
@@ -595,6 +751,7 @@ class TransposeOp(Op):
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(self.input[0].data.transpose(self.axes), creation_op=self)
+            TcGraph.AddOp('transpose', [self.input[0]], [self.output])
         return self.output
 
 
@@ -611,6 +768,7 @@ class ReshapeOp(Op):
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(self.input[0].data.reshape(self.shape), creation_op=self)
+            TcGraph.AddOp('reshape', [self.input[0]], [self.output])
         return self.output
 
 
