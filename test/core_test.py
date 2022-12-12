@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from toynn.core import Tensor, Linear
-from toynn.frame import SGD, Adam
+from toynn.utils import SGD, Adam
 
 
 class TestTensor:
