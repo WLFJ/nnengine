@@ -61,7 +61,7 @@ class TestTensor:
         assert (t2.data == np.array([2, 4, 3])).all()
 
     def test_sin(self):
-        t1 = Tensor([math.pi*0.5, math.pi, 0])
+        t1 = Tensor([math.pi * 0.5, math.pi, 0])
         t2 = t1.sin()
         print(t2)
         assert (abs(t2.data - np.array([1, 0, 0])) <= np.array([1.0000000e+00, 1.2246468e-16, 0.0000000e+00])).all()
@@ -119,30 +119,31 @@ class TestTensor:
 
     def test_broadcast(self):
         t1 = Tensor([1, 2])
-        t2 = Tensor([[1],[2],[3]])
+        t2 = Tensor([[1], [2], [3]])
         t3 = t1 + t2
-        assert (t3.data == np.array([[2, 3],[3, 4],[4, 5]])).all()
+        assert (t3.data == np.array([[2, 3], [3, 4], [4, 5]])).all()
 
     def test_squeeze(self):
-        t1 = Tensor([[[0,0]],[[0,0]]])
+        t1 = Tensor([[[0, 0]], [[0, 0]]])
         t2 = t1.squeeze(1)
-        assert (t2.data == np.array([[0,0],[0,0]])).all()
+        assert (t2.data == np.array([[0, 0], [0, 0]])).all()
 
     def test_unsqueeze(self):
-        t1 = Tensor([[0,0],[0,0]])
+        t1 = Tensor([[0, 0], [0, 0]])
         t2 = t1.unsqueeze(1)
-        assert (t2.data == np.array([[[0,0]],[[0,0]]])).all()
+        assert (t2.data == np.array([[[0, 0]], [[0, 0]]])).all()
 
     def test_transpose(self):
-        t1 = Tensor([[1, 2, 3],[4, 5, 6]])
+        t1 = Tensor([[1, 2, 3], [4, 5, 6]])
         t2 = t1.transpose()
-        assert (t2.data == np.array([[1, 4],[2, 5],[3, 6]])).all()
+        assert (t2.data == np.array([[1, 4], [2, 5], [3, 6]])).all()
 
     def test_reshape(self):
         t1 = Tensor([[1, 2, 3], [4, 5, 6]])
         t2 = t1.reshape(6)
         print(t2)
         assert (t2.data == np.array([1, 2, 3, 4, 5, 6])).all()
+
 
 if __name__ == '__main__':
     pytest.main()

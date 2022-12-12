@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.special
+from typing import Iterable
 
 
 class Tensor(object):
@@ -166,7 +167,7 @@ class Tensor(object):
         op: Op = UnsqueezeOp(self, dim)
         return op.calc()
 
-    def transpose(self, axes: list):
+    def transpose(self, axes: Iterable[int] = None):
         op: Op = TransposeOp(self, axes)
         return op.calc()
 
@@ -249,7 +250,7 @@ class TcGraph:
                     op = f'  var v{out} = {name}({params});\n'
                     if name in ['add', 'matmul']:
                         assert len(inp) == 2 and 'binop must have 2 op.'
-                        #TODO: Add more.
+                        # TODO: Add more.
                         binop_dict = {
                             'add': '+',
                             'matmul': '.',
@@ -299,16 +300,15 @@ class TcGraph:
             tmap[t] = len(tmap)
         return self.getTensor(t)
 
-
     @classmethod
     def AddOp(cls, op_name, inputs, outputs):
         return cls.get_instantce().addOp(op_name, inputs, outputs)
 
     def addOp(self, op_name, inputs, outputs):
         self.graph.append((op_name,
-            tuple(self.getTensor(i) for i in inputs),
-            tuple(self.addTensor(o) for o in outputs)
-            ))
+                           tuple(self.getTensor(i) for i in inputs),
+                           tuple(self.addTensor(o) for o in outputs)
+                           ))
 
 
 # TODO grad_fn 是否支持静态、动态重载
@@ -737,12 +737,15 @@ class UnsqueezeOp(Op):
 
 class TransposeOp(Op):
 
-    def __init__(self, t: Tensor, axes: [int] = None):
+    def __init__(self, t: Tensor, axes: Iterable[int] = None):
         super(TransposeOp, self).__init__([t])
-        self.axes = axes
+        if axes is None:
+            self.axes = list(range(len(t.shape) - 1, -1, -1))
+        else:
+            self.axes = axes
         self.grad_fn = [
             lambda grad, out, args: grad.transpose(
-                list(range(len(axes.shape))).sort(key=lambda x: self.axes[x])
+                list(range(len(self.axes))).sort(key=lambda x: self.axes[x])
             )
         ]
         self.calc()
