@@ -49,7 +49,9 @@ class TestTensor:
         assert (t3.data == np.array([[4, 8, 12],
                                      [5, 10, 15],
                                      [6, 12, 18]])).all()
-        assert (t3.grad == np.array([0])).all()
+        t3.backward()
+        assert (t1.grad == np.array([[15, 15, 15]])).all()
+        assert (t2.grad == np.array([[6], [6], [6]])).all()
 
     def test_exp(self):
         t1 = Tensor([0, math.log(2.)], autograd=True)
