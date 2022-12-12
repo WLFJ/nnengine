@@ -694,7 +694,7 @@ class BroadcastOp(Op):
 
         self.axes = tuple(self.axes)
         self.grad_fn = [
-            lambda grad, out, args: grad.sum(axis=self.axes)
+            lambda grad, out, args: grad.sum(axis=self.axes).reshape(args[0].shape)
         ]
         self.calc()
         self.add_dependency()
