@@ -354,7 +354,8 @@ class AddOp(Op):
 
     def calc(self) -> Tensor:
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data + self.input[1].data, creation_op=self, autograd=True)
+            self.output: Tensor = Tensor(self.input[0].data + self.input[1].data, creation_op=self,
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('add', [self.input[0], self.input[1]], [self.output])
         return self.output
 
@@ -373,7 +374,8 @@ class SubOp(Op):
 
     def calc(self) -> Tensor:
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data - self.input[1].data, creation_op=self, autograd=True)
+            self.output: Tensor = Tensor(self.input[0].data - self.input[1].data, creation_op=self,
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('sub', [self.input[0], self.input[1]], [self.output])
         return self.output
 
@@ -392,7 +394,8 @@ class MulOp(Op):
 
     def calc(self) -> Tensor:
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data * self.input[1].data, creation_op=self, autograd=True)
+            self.output: Tensor = Tensor(self.input[0].data * self.input[1].data, creation_op=self,
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('mul', [self.input[0], self.input[1]], [self.output])
         return self.output
 
@@ -411,7 +414,8 @@ class DivOp(Op):
 
     def calc(self) -> Tensor:
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data / self.input[1].data, creation_op=self, autograd=True)
+            self.output: Tensor = Tensor(self.input[0].data / self.input[1].data, creation_op=self,
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('div', [self.input[0], self.input[1]], [self.output])
         return self.output
 
@@ -431,7 +435,7 @@ class PowOp(Op):
     def calc(self) -> Tensor:
         if self.output is None:
             self.output: Tensor = Tensor(np.power(self.input[0].data, self.input[1].data), creation_op=self,
-                                         autograd=True)
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('pow', [self.input[0], self.input[1]], [self.output])
         return self.output
 
@@ -448,7 +452,8 @@ class NegOp(Op):
 
     def calc(self) -> Tensor:
         if self.output is None:
-            self.output: Tensor = Tensor(-self.input[0].data, creation_op=self, autograd=True)
+            self.output: Tensor = Tensor(-self.input[0].data, creation_op=self,
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('neg', [self.input[0]], [self.output])
         return self.output
 
@@ -466,7 +471,8 @@ class MatMulOp(Op):
 
     def calc(self) -> Tensor:
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data.dot(self.input[1].data), creation_op=self, autograd=True)
+            self.output: Tensor = Tensor(self.input[0].data.dot(self.input[1].data), creation_op=self,
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('matmul', [self.input[0], self.input[1]], [self.output])
         return self.output
 
@@ -482,7 +488,8 @@ class ExpOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(np.exp(self.input[0].data), creation_op=self, autograd=True)
+            self.output: Tensor = Tensor(np.exp(self.input[0].data), creation_op=self,
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('exp', [self.input[0]], [self.output])
         return self.output
 
@@ -498,7 +505,8 @@ class LogOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(np.log(self.input[0].data), creation_op=self, autograd=True)
+            self.output: Tensor = Tensor(np.log(self.input[0].data), creation_op=self,
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('log', [self.input[0]], [self.output])
         return self.output
 
@@ -514,7 +522,8 @@ class SinOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(np.sin(self.input[0].data), creation_op=self, autograd=True)
+            self.output: Tensor = Tensor(np.sin(self.input[0].data), creation_op=self,
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('sin', [self.input[0]], [self.output])
         return self.output
 
@@ -530,7 +539,8 @@ class CosOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(np.cos(self.input[0].data), creation_op=self, autograd=True)
+            self.output: Tensor = Tensor(np.cos(self.input[0].data), creation_op=self,
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('cos', [self.input[0]], [self.output])
         return self.output
 
@@ -547,7 +557,8 @@ class SigmoidOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(1 / (1 + np.exp(-self.input[0].data)), creation_op=self, autograd=True)
+            self.output: Tensor = Tensor(1 / (1 + np.exp(-self.input[0].data)), creation_op=self,
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('sigmoid', [self.input[0]], [self.output])
         return self.output
 
@@ -564,7 +575,8 @@ class TanhOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(np.tanh(self.input[0].data), creation_op=self, autograd=True)
+            self.output: Tensor = Tensor(np.tanh(self.input[0].data), creation_op=self,
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('tanh', [self.input[0]], [self.output])
         return self.output
 
@@ -580,7 +592,8 @@ class ReLuOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(np.maximum(self.input[0].data, 0), creation_op=self, autograd=True)
+            self.output: Tensor = Tensor(np.maximum(self.input[0].data, 0), creation_op=self,
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('relu', [self.input[0]], [self.output])
         return self.output
 
@@ -596,7 +609,8 @@ class AbsOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(np.abs(self.input[0].data), creation_op=self, autograd=True)
+            self.output: Tensor = Tensor(np.abs(self.input[0].data), creation_op=self,
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('abs', [self.input[0]], [self.output])
         return self.output
 
@@ -614,7 +628,8 @@ class SumOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data.sum(axis=self.axes), creation_op=self, autograd=True)
+            self.output: Tensor = Tensor(self.input[0].data.sum(axis=self.axes), creation_op=self,
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('sum', [self.input[0]], [self.output])
         return self.output
 
@@ -632,7 +647,8 @@ class MaxOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data.max(axis=self.axes), creation_op=self, autograd=True)
+            self.output: Tensor = Tensor(self.input[0].data.max(axis=self.axes), creation_op=self,
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('max', [self.input[0]], [self.output])
         return self.output
 
@@ -652,7 +668,8 @@ class MeanOp(Op):
     # TODO: TcGraph: argument config is needed.
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data.mean(axis=self.dim), creation_op=self, autograd=True)
+            self.output: Tensor = Tensor(self.input[0].data.mean(axis=self.dim), creation_op=self,
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('mean', [self.input[0]], [self.output])
         return self.output
 
@@ -672,7 +689,7 @@ class SoftmaxOp(Op):
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(scipy.special.softmax(self.input[0].data, axis=-1), creation_op=self,
-                                         autograd=True)
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('softmax', [self.input[0]], [self.output])
         return self.output
 
@@ -700,7 +717,7 @@ class BroadcastOp(Op):
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(np.broadcast_to(self.input[0].data, self.shape), creation_op=self,
-                                         autograd=True)
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('broadcast', [self.input[0]], [self.output])
         return self.output
 
@@ -718,7 +735,7 @@ class SqueezeOp(Op):
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(np.squeeze(self.input[0].data, axis=self.axis), creation_op=self,
-                                         autograd=True)
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('squeeze', [self.input[0]], [self.output])
         return self.output
 
@@ -736,7 +753,7 @@ class UnsqueezeOp(Op):
     def calc(self):
         if self.output is None:
             self.output: Tensor = Tensor(np.expand_dims(self.input[0].data, axis=self.axis), creation_op=self,
-                                         autograd=True)
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('unsqueeze', [self.input[0]], [self.output])
         return self.output
 
@@ -759,7 +776,8 @@ class TransposeOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data.transpose(self.axes), creation_op=self, autograd=True)
+            self.output: Tensor = Tensor(self.input[0].data.transpose(self.axes), creation_op=self,
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('transpose', [self.input[0]], [self.output])
         return self.output
 
@@ -776,7 +794,8 @@ class ReshapeOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data.reshape(self.shape), creation_op=self, autograd=True)
+            self.output: Tensor = Tensor(self.input[0].data.reshape(self.shape), creation_op=self,
+                                         autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('reshape', [self.input[0]], [self.output])
         return self.output
 
