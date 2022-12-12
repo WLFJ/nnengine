@@ -128,7 +128,7 @@ class MaxPool2d(Model):
                     j_end = j_start + self.filter_size
 
                     input_region = input.data[b, :, i_start:i_end, j_start:j_end]
-                    self.output.data[b, :, i, j] = input_region.max(axis=(1, 2))
+                    self.output.data[b, :, i, j] = input_region.max(axes=(1, 2))
 
         return self.output
 
