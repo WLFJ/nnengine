@@ -106,3 +106,25 @@ class RMSprop(Optimizer):
 
             if zero:
                 p.grad *= 0
+
+
+class SGDMomentum(Optimizer):
+
+    def __init__(self, parameters, lr=0.001, momentum=0.9):
+        super(SGDMomentum, self).__init__(parameters, lr)
+        self.momentum = momentum
+
+        self.m = list()
+
+        for p in self.parameters:
+            self.m.append(Tensor(np.zeros_like(p.data)))
+
+    def step(self, zero=True):
+
+        for p, m in zip(self.parameters, self.m):
+
+            m.data = self.momentum * m.data + p.grad
+            p.data -= self.lr * m.data
+
+            if zero:
+                p.grad *= 0
