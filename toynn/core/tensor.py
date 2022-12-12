@@ -9,7 +9,7 @@ class Tensor(object):
                  autograd: bool = False,
                  creation_op=None):
 
-        self.data = np.array(data)
+        self.data = np.array(data, dtype=np.float64)
         self.shape = self.data.shape
         self.autograd = autograd
         if autograd:
@@ -110,12 +110,12 @@ class Tensor(object):
         op: Op = AbsOp(self)
         return op.calc()
 
-    def sum(self, dim):
-        op: Op = SumOp(self, dim)
+    def sum(self, axes):
+        op: Op = SumOp(self, axes)
         return op.calc()
 
-    def max(self, axis):
-        op: Op = MaxOp(self, axis)
+    def max(self, axes):
+        op: Op = MaxOp(self, axes)
         return op.calc()
 
     def mean(self, dim):
@@ -603,10 +603,9 @@ class AbsOp(Op):
 
 class SumOp(Op):
 
-    def __init__(self, t: Tensor, dim: int):
+    def __init__(self, t: Tensor, axes: int):
         super(SumOp, self).__init__([t])
-        assert dim < len(t.data.shape)
-        self.dim = dim
+        self.axes = axes
         self.grad_fn = [
             lambda grad, out, args: grad * np.ones_like(args[0].data)
         ]
@@ -615,26 +614,25 @@ class SumOp(Op):
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data.sum(axis=self.dim), creation_op=self, autograd=True)
+            self.output: Tensor = Tensor(self.input[0].data.sum(axis=self.axes), creation_op=self, autograd=True)
             TcGraph.AddOp('sum', [self.input[0]], [self.output])
         return self.output
 
 
 class MaxOp(Op):
 
-    def __init__(self, t: Tensor, dim: int):
+    def __init__(self, t: Tensor, axes: int):
         super(MaxOp, self).__init__([t])
-        assert dim < len(t.data.shape)
         self.grad_fn = [
             lambda grad, out, args: grad * (args[0].data == out.data)
         ]
-        self.dim = dim
+        self.axes = axes
         self.calc()
         self.add_dependency()
 
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data.max(axis=self.dim), creation_op=self, autograd=True)
+            self.output: Tensor = Tensor(self.input[0].data.max(axis=self.axes), creation_op=self, autograd=True)
             TcGraph.AddOp('max', [self.input[0]], [self.output])
         return self.output
 
