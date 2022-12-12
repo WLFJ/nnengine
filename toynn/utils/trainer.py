@@ -43,7 +43,7 @@ class Trainer(object):
     def _train_epoch(self, train_dataloader) -> [float]:
         losses = []
         for batch in train_dataloader:
-            y_truth = Tensor(batch.labels, autograd=True)
+            y_truth = Tensor(batch.labels, autograd=False)
             y_pred = self.m(Tensor(batch.data, autograd=False))
             loss: Tensor = self.lf(y_pred, y_truth)
             loss.backward()
@@ -54,7 +54,7 @@ class Trainer(object):
     def _eval_epoch(self, eval_dataloader):
         losses = []
         for batch in eval_dataloader:
-            y_truth = Tensor(batch.labels, autograd=True)
+            y_truth = Tensor(batch.labels, autograd=False)
             y_pred = self.m(Tensor(batch.data, autograd=False))
             loss: Tensor = self.lf(y_pred, y_truth)
             losses.append(loss.data)
