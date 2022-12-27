@@ -10,6 +10,10 @@ import numpy as np
 
 from lightGE.utils import SGD, Trainer
 
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
 m = Linear(2, 1)
 
 data = np.random.randn(100, 2)

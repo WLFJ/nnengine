@@ -5,6 +5,9 @@ from lightGE.data import DataLoader
 
 from lightGE.core.tensor import Tensor
 
+import logging
+
+
 
 class Trainer(object):
 
@@ -24,35 +27,42 @@ class Trainer(object):
         eval_dataloader = DataLoader(eval_dataset, self.batch_size, shuffle=self.shuffle)
 
         min_eval_loss, best_epoch = float('inf'), 0
-        bar = tqdm(range(self.epochs))
-        for epoch_idx in bar:
+        for epoch_idx in range(self.epochs):
             train_loss = self._train_epoch(train_dataloader)
             eval_loss = self._eval_epoch(eval_dataloader)
 
-            bar.set_description("Epoch: {}, ".format(epoch_idx) + 'training loss: {},'.format(train_loss) +
-                                'validation loss: {}'.format(eval_loss))
-
             if self.sche is not None:
                 self.sche.step(eval_loss)
+
+            logging.info("Lr: {}".format(self.opt.lr))
 
             if eval_loss < min_eval_loss:
                 min_eval_loss = eval_loss
                 self.save_model(self.save_path)
                 best_epoch = epoch_idx
 
-        print("Best epoch: {}, Best validation loss: {}".format(best_epoch, min_eval_loss))
+        logging.info("Best epoch: {}, Best validation loss: {}".format(best_epoch, min_eval_loss))
 
         return min_eval_loss
 
     def _train_epoch(self, train_dataloader) -> [float]:
         losses = []
-        for batch in train_dataloader:
+
+        bar = tqdm(train_dataloader)
+        batch_idx = 0
+
+        for batch in bar:
+            batch_idx += 1
             y_truth = Tensor(batch.labels, autograd=False)
             y_pred = self.m(Tensor(batch.data, autograd=False))
             loss: Tensor = self.lf(y_pred, y_truth)
             loss.backward()
             self.opt.step(loss)
             losses.append(loss.data)
+
+            bar.set_description("Batch: {}/{} ".format(batch_idx, len(train_dataloader)) +
+                                'Training loss: {},'.format(np.mean(losses)))
+
         return np.mean(losses)
 
     def _eval_epoch(self, eval_dataloader):
@@ -62,6 +72,8 @@ class Trainer(object):
             y_pred = self.m(Tensor(batch.data, autograd=False))
             loss: Tensor = self.lf(y_pred, y_truth)
             losses.append(loss.data)
+        logging.info("Validation loss: {}".format(np.mean(losses)), )
+
         return np.mean(losses)
 
     def load_model(self, cache_name):
