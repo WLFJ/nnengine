@@ -1,9 +1,9 @@
 import pickle
 from tqdm import tqdm
 import numpy as np
-from toynn.data import DataLoader
+from lightGE.data import DataLoader
 
-from toynn.core.tensor import Tensor
+from lightGE.core.tensor import Tensor
 
 
 class Trainer(object):

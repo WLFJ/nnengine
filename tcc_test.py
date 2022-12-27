@@ -10,8 +10,8 @@ training, it cannot recognize there's some same pattern in
 it, the result it cause will make TcGraph very big.
 '''
 
-from toynn.core import Tensor
-from toynn.core import TcGraph
+from lightGE.core import Tensor
+from lightGE.core import TcGraph
 
 a = Tensor([1, 2, 3])
 b = Tensor([4, 5, 6])

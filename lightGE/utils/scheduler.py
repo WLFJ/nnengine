@@ -1,4 +1,4 @@
-from toynn.utils.optimizer import Optimizer
+from lightGE.utils.optimizer import Optimizer
 import numpy as np
 
 

@@ -118,8 +118,16 @@ class Tensor(object):
         op: Op = MaxOp(self, axes)
         return op.calc()
 
-    def mean(self, dim):
-        op: Op = MeanOp(self, dim)
+    def mean(self, axes):
+        op: Op = MeanOp(self, axes)
+        return op.calc()
+
+    def var(self, axes):
+        op: Op = VarOp(self, axes)
+        return op.calc()
+
+    def sqrt(self):
+        op: Op = SqrtOp(self)
         return op.calc()
 
     def broadcast(self, other):
@@ -655,12 +663,32 @@ class MaxOp(Op):
 
 class MeanOp(Op):
 
-    def __init__(self, t: Tensor, dim: int):
+    def __init__(self, t: Tensor, axes: [int, Iterable]):
         super(MeanOp, self).__init__([t])
-        assert dim < len(t.data.shape)
-        self.dim = dim
+
+        if isinstance(axes, int):
+            axes = [axes]
+
+        axes = list(axes)
+
+        for i in range(len(axes)):
+            if axes[i] < 0:
+                axes[i] += len(t.data.shape)
+
+        self.axes = tuple(axes)
+
+        self._axes = list(t.shape)
+        for i in range(len(self._axes)):
+            if i in axes:
+                self._axes[i] = 1
+        self._axes = tuple(self._axes)
+
+        self.N = 1
+        for axis in axes:
+            self.N *= t.shape[axis]
+
         self.grad_fn = [
-            lambda grad, out, args: grad * np.ones_like(args[0].data) / args[0].data.shape[self.dim]
+            lambda grad, out, args: grad.reshape(self._axes) * np.ones_like(args[0].data) / self.N
         ]
         self.calc()
         self.add_dependency()
@@ -668,9 +696,70 @@ class MeanOp(Op):
     # TODO: TcGraph: argument config is needed.
     def calc(self):
         if self.output is None:
-            self.output: Tensor = Tensor(self.input[0].data.mean(axis=self.dim), creation_op=self,
+            self.output: Tensor = Tensor(self.input[0].data.sum(axis=self.axes) / self.N,
+                                         creation_op=self,
                                          autograd=any(t.autograd for t in self.input))
-            TcGraph.AddOp('mean', [self.input[0]], [self.output])
+        return self.output
+
+
+class VarOp(Op):
+
+    def __init__(self, t: Tensor, axes: [int, Iterable]):
+        super(VarOp, self).__init__([t])
+
+        if isinstance(axes, int):
+            axes = [axes]
+
+        axes = list(axes)
+
+        for i in range(len(axes)):
+            if axes[i] < 0:
+                axes[i] += len(t.data.shape)
+
+        self.axes = tuple(axes)
+
+        self._axes = list(t.shape)
+        for i in range(len(self._axes)):
+            if i in axes:
+                self._axes[i] = 1
+        self._axes = tuple(self._axes)
+
+        self.N = 1
+        for axis in axes:
+            self.N *= t.shape[axis]
+
+        self.grad_fn = [
+            lambda grad, out, args: grad.reshape(self._axes) *
+                                    2 * (args[0].data - args[0].data.sum(self.axes, keepdims=True) / self.N) / self.N
+        ]
+        self.calc()
+        self.add_dependency()
+
+    def calc(self):
+        if self.output is None:
+            data = self.input[0].data
+            mean_val = data.sum(axis=self.axes, keepdims=True) / self.N
+            data = data - mean_val
+            data = data * data
+            self.output: Tensor = Tensor(data.sum(axis=self.axes) / self.N, creation_op=self,
+                                         autograd=any(t.autograd for t in self.input))
+
+        return self.output
+
+
+class SqrtOp(Op):
+    def __init__(self, t: Tensor):
+        super(SqrtOp, self).__init__([t])
+        self.grad_fn = [
+            lambda grad, out, args: grad * 0.5 * (1 / out.data)
+        ]
+        self.calc()
+        self.add_dependency()
+
+    def calc(self):
+        if self.output is None:
+            self.output: Tensor = Tensor(np.sqrt(self.input[0].data), creation_op=self,
+                                         autograd=any(t.autograd for t in self.input))
         return self.output
 
 
@@ -848,5 +937,13 @@ def max(t: Tensor, dim: int) -> Tensor:
     return t.max(dim)
 
 
-def mean(t: Tensor, dim: int) -> Tensor:
-    return t.mean(dim)
+def mean(t: Tensor, axes: [int, Iterable]) -> Tensor:
+    return t.mean(axes)
+
+
+def var(t: Tensor, axes: [int, Iterable]) -> Tensor:
+    return t.var(axes)
+
+
+def sqrt(t: Tensor) -> Tensor:
+    return t.sqrt()

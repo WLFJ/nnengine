@@ -1,4 +1,4 @@
-from toynn.core.tensor import Tensor
+from lightGE.core.tensor import Tensor
 import numpy as np
 
 
@@ -13,6 +13,21 @@ class Optimizer:
     def zero(self):
         for p in self.parameters:
             p.grad *= 0
+
+    def clip_grad(self, clip_value):
+        for p in self.parameters:
+            p.grad.data = np.clip(p.grad.data, -clip_value, clip_value)
+
+    def clip_grad_norm(self, max_norm, norm_type):
+        total_norm = 0
+        for p in self.parameters:
+            param_norm = p.grad.norm(norm_type)
+            total_norm += param_norm ** norm_type
+        total_norm = total_norm ** (1. / norm_type)
+        clip_coef = max_norm / (total_norm + 1e-6)
+        if clip_coef < 1:
+            for p in self.parameters:
+                p.grad *= clip_coef
 
 
 class SGD(Optimizer):

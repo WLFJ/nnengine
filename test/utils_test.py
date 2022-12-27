@@ -1,6 +1,6 @@
 import pytest
-from toynn.core import Tensor, Linear
-from toynn.utils import SGD, Adam, AdaGrad, Trainer, RMSprop
+from lightGE.core import Tensor, Linear
+from lightGE.utils import SGD, Adam, AdaGrad, Trainer, RMSprop
 import numpy as np
 
 

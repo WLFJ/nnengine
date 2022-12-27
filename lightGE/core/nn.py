@@ -1,10 +1,12 @@
-from toynn.core.tensor import Tensor
+from lightGE.core.tensor import Tensor
 import numpy as np
 
 
 class Model(object):
 
     def __init__(self):
+        self.is_eval = False
+
         pass
 
     def get_parameters(self):
@@ -15,6 +17,12 @@ class Model(object):
 
     def __call__(self, *args, **kwargs):
         return self.forward(*args)
+
+    def eval(self):
+        self.is_eval = True
+
+    def train(self):
+        self.is_eval = False
 
 
 class Sequential(Model):
@@ -234,3 +242,53 @@ class Relu(Model):
 
     def get_parameters(self):
         return []
+
+
+class BatchNorm1d(Model):
+    def __init__(self, n_inputs):
+        super().__init__()
+        self.n_inputs = n_inputs
+
+        self.gamma = Tensor(np.ones(n_inputs), autograd=True)
+        self.beta = Tensor(np.zeros(n_inputs), autograd=True)
+        self.eps = Tensor(1e-8, autograd=False)
+
+    def forward(self, input: Tensor):
+        if self.is_eval:
+            return input
+        else:
+            mean_val = input.mean(0)
+            var_val = input.var(0).add(self.eps)
+            std_val = var_val.sqrt()
+
+            norm = (input - mean_val) / std_val
+
+            return self.gamma * norm + self.beta
+
+    def get_parameters(self):
+        return [self.gamma, self.beta]
+
+
+class BatchNorm2d(Model):
+    def __init__(self, n_inputs):
+        super().__init__()
+        self.n_inputs = n_inputs
+
+        self.gamma = Tensor(np.ones(n_inputs), autograd=True)
+        self.beta = Tensor(np.zeros(n_inputs), autograd=True)
+        self.eps = Tensor(1e-8, autograd=False)
+
+    def forward(self, input: Tensor):
+        if self.is_eval:
+            return input
+        else:
+            mean_val = input.mean((0, 2, 3))
+            var_val = input.var((0, 2, 3)).add(self.eps)
+            std_val = var_val.sqrt()
+
+            norm = (input - mean_val) / std_val
+
+            return self.gamma * norm + self.beta
+
+    def get_parameters(self):
+        return [self.gamma, self.beta]

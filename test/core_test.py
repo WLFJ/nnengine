@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from toynn.core import Tensor, Linear
-from toynn.utils import SGD, Adam
+from lightGE.core import Tensor, Linear
+from lightGE.utils import SGD, Adam
 
 
 class TestTensor:
@@ -141,7 +141,21 @@ class TestTensor:
         t3.backward()
         assert (t1.grad == np.array([[0, 0, 1]])).all()
 
-    # def test_softmax(self):
+    def test_mean(self):
+        data = np.random.randn(2, 3, 4)
+        t1 = Tensor(data, autograd=True)
+        t2 = t1.mean((0, -1))
+        assert (t2.data == data.sum((0, -1)) / 8).all()
+        t2.backward()
+        assert (t1.grad == np.ones_like(data) / 8).all()
+
+    def test_var(self):
+        data = np.random.randn(2, 3, 4)
+        t1 = Tensor(data, autograd=True)
+        t2 = t1.var((0, -1))
+        assert (t2.data == ((data - data.sum((0, 2), keepdims=True) / 8) ** 2).sum((0, -1)) / 8).all()
+        t2.backward()
+        assert (t1.grad == 2 * (data - data.sum((0, 2), keepdims=True) / 8) / 8).all()
 
     def test_broadcast(self):
         p1 = np.random.randn(2, 3, 4, 1)

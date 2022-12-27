@@ -1,4 +1,4 @@
-from toynn.data.dataloader import Dataset
+from lightGE.data.dataloader import Dataset
 import numpy as np
 
 
