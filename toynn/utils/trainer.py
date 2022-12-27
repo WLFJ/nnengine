@@ -17,6 +17,7 @@ class Trainer(object):
         self.epochs = config['epochs']
         self.batch_size = config['batch_size']
         self.shuffle = config['shuffle']
+        self.save_path = config['save_path']
 
     def train(self, train_dataset, eval_dataset):
         train_dataloader = DataLoader(train_dataset, self.batch_size, shuffle=self.shuffle)
@@ -36,7 +37,10 @@ class Trainer(object):
 
             if eval_loss < min_eval_loss:
                 min_eval_loss = eval_loss
+                self.save_model(self.save_path)
                 best_epoch = epoch_idx
+
+        print("Best epoch: {}, Best validation loss: {}".format(best_epoch, min_eval_loss))
 
         return min_eval_loss
 

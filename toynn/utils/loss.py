@@ -13,3 +13,11 @@ def maeLoss(pred: Tensor, target: Tensor) -> Tensor:
 
 def crossEntropyLoss(pred: Tensor, target: Tensor) -> Tensor:
     return -target * pred.log() - (Tensor(np.ones_like(pred.data)) - target) * pred.log()
+
+
+def huberLoss(pred: Tensor, target: Tensor) -> Tensor:
+    diff = pred - target
+    if diff.abs().data < 1:
+        return (diff * diff).sum(0)
+    else:
+        return diff.abs().sum(0)

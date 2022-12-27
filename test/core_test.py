@@ -88,6 +88,13 @@ class TestTensor:
         t2.backward()
         assert (t1.grad == np.array([0.25, 0.25, 0.25])).all()
 
+    def test_softmax(self):
+        t1 = Tensor([1, 2, 3], autograd=True)
+        t2 = t1.softmax()
+        assert (abs(t2.data - np.array([0.09003057, 0.24472847, 0.66524096])) <= 1e-8).all()
+        t2.backward()
+        assert (abs(t1.grad == np.array([0.009001, 0.023648, 0.067665])) <= 1e-8).all()
+
     def test_tanh(self):
         t1 = Tensor([0, 0, 0], autograd=True)
         t2 = t1.tanh()

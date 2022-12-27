@@ -10,24 +10,26 @@ class Model(object):
     def get_parameters(self):
         return list()
 
-    def forward(self, input):
-        return input
+    def forward(self, *input):
+        raise NotImplementedError
 
     def __call__(self, *args, **kwargs):
-        return self.forward(*args, **kwargs)
+        return self.forward(*args)
 
 
 class Sequential(Model):
 
-    def __init__(self, layers=list()):
+    def __init__(self, layers=None):
         super().__init__()
 
+        if layers is None:
+            layers = []
         self.layers = layers
 
     def add(self, layer):
         self.layers.append(layer)
 
-    def forward(self, input):
+    def forward(self, input: Tensor):
         for layer in self.layers:
             input = layer.forward(input)
         return input
@@ -50,7 +52,7 @@ class Linear(Model):
     def get_parameters(self):
         return [self.weight, self.bias]
 
-    def forward(self, input):
+    def forward(self, input: Tensor):
         return input.mm(self.weight) + self.bias
 
 
@@ -74,7 +76,7 @@ class Conv2d(Model):
         else:
             return [self.weight]
 
-    def forward(self, input):
+    def forward(self, input: Tensor):
         batch_size, n_inputs, input_height, input_width = input.data.shape
         n_outputs, n_inputs, filter_size, filter_size = self.weight.data.shape
 
@@ -101,7 +103,6 @@ class Conv2d(Model):
         return self.output
 
 
-# TODO 池化如何反向传播
 class MaxPool2d(Model):
     def __init__(self, filter_size, stride=None):
         super().__init__()
@@ -111,7 +112,7 @@ class MaxPool2d(Model):
         else:
             self.stride = stride
 
-    def forward(self, input):
+    def forward(self, input: Tensor):
         batch_size, n_inputs, input_height, input_width = input.data.shape
 
         output_height = int((input_height - self.filter_size) / self.stride) + 1
@@ -145,7 +146,7 @@ class AvgPool2d(Model):
         else:
             self.stride = stride
 
-    def forward(self, input):
+    def forward(self, input: Tensor):
         batch_size, n_inputs, input_height, input_width = input.data.shape
 
         output_height = int((input_height - self.filter_size) / self.stride) + 1
@@ -184,7 +185,7 @@ class LSTM(Model):
         self.bias_h = Tensor(np.zeros(n_hidden), autograd=True)
         self.bias_y = Tensor(np.zeros(n_outputs), autograd=True)
 
-    def forward(self, input, hidden):
+    def forward(self, input: Tensor, hidden: Tensor):
         self.hidden = hidden
         self.input = input
 
@@ -206,7 +207,7 @@ class Tanh(Model):
     def __init__(self):
         super().__init__()
 
-    def forward(self, input):
+    def forward(self, input: Tensor):
         return input.tanh()
 
     def get_parameters(self):
@@ -217,8 +218,19 @@ class Sigmoid(Model):
     def __init__(self):
         super().__init__()
 
-    def forward(self, input):
+    def forward(self, input: Tensor):
         return input.sigmoid()
+
+    def get_parameters(self):
+        return []
+
+
+class Relu(Model):
+    def __int__(self):
+        super().__init__()
+
+    def forward(self, input: Tensor):
+        return input.relu()
 
     def get_parameters(self):
         return []
