@@ -50,4 +50,4 @@ class MNIST(Model):
         return x.softmax()
 
     def get_parameters(self):
-        return self.parameters()
+        return self.parameters
