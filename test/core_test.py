@@ -232,7 +232,7 @@ class TestTensor:
 
     def test_reshape(self):
         t1 = Tensor([[1, 2, 3], [4, 5, 6]], autograd=True)
-        t2 = t1.reshape(6)
+        t2 = t1.reshape((6,))
         assert (t2.data == np.array([1, 2, 3, 4, 5, 6])).all()
         t2.backward()
         assert (t1.grad == np.ones_like(t1.data)).all()
@@ -245,7 +245,7 @@ class TestNN:
             autograd=False
         )
         m = Linear(3, 1)
-        opt = SGD(parameters=m.params(), lr=0.01)
+        opt = SGD(parameters=m.parameters(), lr=0.01)
         pred = m(data)
         for i in range(1000):
             loss = ((pred - Tensor(1.)) ** 2.).sum(0)
