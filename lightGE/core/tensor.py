@@ -337,7 +337,8 @@ class Op:
         assert len(self.input) == len(self.grad_fn)
 
         for i in range(len(self.input)):
-            self.input[i].backward(self.grad_fn[i](grad, self.output, self.input), id(self.output))
+            if self.input[i].autograd:
+                self.input[i].backward(self.grad_fn[i](grad, self.output, self.input), id(self.output))
 
     def add_dependency(self):
         for i in range(len(self.input)):
@@ -623,13 +624,36 @@ class AbsOp(Op):
         return self.output
 
 
+def reduce_shape(shape: tuple, axes: [None, int, Iterable]):
+    if axes is None:
+        return None, (1,) * len(shape)
+
+    _shape = list(shape)
+    if isinstance(axes, int):
+        axes = [axes]
+    else:
+        axes = list(axes)
+
+    for i in range(len(axes)):
+        if axes[i] < 0:
+            axes[i] += len(shape)
+        _shape[axes[i]] = 1
+
+    axes = tuple(axes)
+
+    _shape = tuple(_shape)
+    return axes, _shape
+
+
 class SumOp(Op):
 
-    def __init__(self, t: Tensor, axes: int):
+    def __init__(self, t: Tensor, axes: [int, Iterable]):
         super(SumOp, self).__init__([t])
-        self.axes = axes
+
+        self.axes, self._shape = reduce_shape(t.shape, axes)
+
         self.grad_fn = [
-            lambda grad, out, args: grad * np.ones_like(args[0].data)
+            lambda grad, out, args: grad.reshape(self._shape) * np.ones_like(args[0].data)
         ]
         self.calc()
         self.add_dependency()
@@ -666,29 +690,14 @@ class MeanOp(Op):
     def __init__(self, t: Tensor, axes: [int, Iterable]):
         super(MeanOp, self).__init__([t])
 
-        if isinstance(axes, int):
-            axes = [axes]
-
-        axes = list(axes)
-
-        for i in range(len(axes)):
-            if axes[i] < 0:
-                axes[i] += len(t.data.shape)
-
-        self.axes = tuple(axes)
-
-        self._axes = list(t.shape)
-        for i in range(len(self._axes)):
-            if i in axes:
-                self._axes[i] = 1
-        self._axes = tuple(self._axes)
+        self.axes, self._shape = reduce_shape(t.shape, axes)
 
         self.N = 1
-        for axis in axes:
+        for axis in self.axes:
             self.N *= t.shape[axis]
 
         self.grad_fn = [
-            lambda grad, out, args: grad.reshape(self._axes) * np.ones_like(args[0].data) / self.N
+            lambda grad, out, args: grad.reshape(self._shape) * np.ones_like(args[0].data) / self.N
         ]
         self.calc()
         self.add_dependency()
@@ -707,29 +716,14 @@ class VarOp(Op):
     def __init__(self, t: Tensor, axes: [int, Iterable]):
         super(VarOp, self).__init__([t])
 
-        if isinstance(axes, int):
-            axes = [axes]
-
-        axes = list(axes)
-
-        for i in range(len(axes)):
-            if axes[i] < 0:
-                axes[i] += len(t.data.shape)
-
-        self.axes = tuple(axes)
-
-        self._axes = list(t.shape)
-        for i in range(len(self._axes)):
-            if i in axes:
-                self._axes[i] = 1
-        self._axes = tuple(self._axes)
+        self.axes, self._shape = reduce_shape(t.shape, axes)
 
         self.N = 1
-        for axis in axes:
+        for axis in self.axes:
             self.N *= t.shape[axis]
 
         self.grad_fn = [
-            lambda grad, out, args: grad.reshape(self._axes) *
+            lambda grad, out, args: grad.reshape(self._shape) *
                                     2 * (args[0].data - args[0].data.sum(self.axes, keepdims=True) / self.N) / self.N
         ]
         self.calc()
@@ -1139,8 +1133,8 @@ def abs(t: Tensor) -> Tensor:
     return t.abs()
 
 
-def sum(t: Tensor, dim: int) -> Tensor:
-    return t.sum(dim)
+def sum(t: Tensor, axes: [int, Iterable]) -> Tensor:
+    return t.sum(axes)
 
 
 def max(t: Tensor, dim: int) -> Tensor:

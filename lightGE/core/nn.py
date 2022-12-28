@@ -251,3 +251,19 @@ class Dropout(Model):
 
     def get_parameters(self):
         return []
+
+
+class Dropout2d(Model):
+    def __init__(self, p=0.5):
+        super().__init__()
+        self.p = p
+
+    def forward(self, input: Tensor):
+        if self.is_eval:
+            return input
+        else:
+            self.mask = Tensor(np.random.binomial(1, self.p, size=(*input.data.shape[:-2], 1, 1)), autograd=True)
+            return input * self.mask
+
+    def get_parameters(self):
+        return []
