@@ -205,7 +205,7 @@ class TestNN:
             autograd=False
         )
         m = Linear(3, 1)
-        opt = SGD(parameters=m.get_parameters(), lr=0.01)
+        opt = SGD(parameters=m.params(), lr=0.01)
         pred = m(data)
         for i in range(1000):
             loss = ((pred - Tensor(1.)) ** 2.).sum(0)

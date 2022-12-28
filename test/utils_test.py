@@ -11,7 +11,7 @@ class TestOptimizer:
         data = Tensor(p)
         label = Tensor(2) * Tensor(p[:, :1]) + Tensor(p[:, 1:]) + Tensor(-0.5)
         m = Linear(2, 1)
-        opt = self.opt(parameters=m.get_parameters(), lr=self.lr)
+        opt = self.opt(parameters=m.params(), lr=self.lr)
         pred = m(data)
         for i in range(self.epoch):
             loss = ((pred - label) ** 2.).sum(0)

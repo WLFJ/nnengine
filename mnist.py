@@ -56,7 +56,7 @@ class MnistDataset(Dataset):
 
 class MNIST(Model):
     def __init__(self):
-        super(Model, self).__init__()
+        super(MNIST, self).__init__()
 
         self.conv1 = Sequential(
             [Conv2d(1, 10, filter_size=5),
@@ -71,25 +71,17 @@ class MNIST(Model):
         self.fc1 = Sequential([Linear(320, 50), ReLu()])
         self.fc2 = Sequential([Dropout2d(), Linear(50, 10)])
 
-        self.parameters = []
-        self.parameters += self.conv1.get_parameters()
-        self.parameters += self.conv2.get_parameters()
-        self.parameters += self.fc1.get_parameters()
-        self.parameters += self.fc2.get_parameters()
-
     def forward(self, x: Tensor):
         x = self.conv1(x)
         x = self.conv2(x)
         x = x.reshape((x.shape[0], -1))
         x = self.fc1(x)
         x = self.fc2(x)
-        return x.softmax()
-
-    def get_parameters(self):
-        return self.parameters
+        return x.softmax().log()
 
 
 def evaluate(model, dataset):
+    model.eval()
     dataloader = DataLoader(dataset, batch_size=128, shuffle=False)
     correct = 0
     bar = tqdm.tqdm(dataloader)
@@ -110,9 +102,9 @@ if __name__ == '__main__':
     train_dataset, eval_dataset = mnist_dataset.split(0.7)
 
     m = MNIST()
-    opt = SGD(parameters=m.get_parameters(), lr=0.01)
+    opt = SGD(parameters=m.parameters(), lr=0.01)
 
-    cache_path = './tmp/mnist.pkl'
+    cache_path = 'tmp/mnist_bst.pkl'
     trainer = Trainer(model=m, optimizer=opt, loss_fun=nll_loss,
                       config={'batch_size': 128,
                               'epochs': 10,
@@ -120,6 +112,6 @@ if __name__ == '__main__':
                               'save_path': cache_path})
 
     # trainer.train(train_dataset, eval_dataset)
-    trainer.load_model(cache_path)
+    trainer.load_model('./tmp/mnist_bst.pkl')
     # trainer.train(train_dataset, eval_dataset)
-    evaluate(m, eval_dataset)
+    evaluate(trainer.m, eval_dataset)

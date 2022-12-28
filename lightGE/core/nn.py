@@ -7,10 +7,20 @@ class Model(object):
     def __init__(self):
         self.is_eval = False
         self.sub_models = []
+        self.params = []
         pass
 
-    def get_parameters(self):
-        return list()
+    def parameters(self):
+        return self.__parameters(set())
+
+    def __parameters(self, visited):
+        visited.add(id(self))
+        params = [*self.params]
+        for l in self.sub_models:
+            if id(l) not in visited:
+                params += l.__parameters(visited)
+
+        return params
 
     def forward(self, *input):
         raise NotImplementedError
@@ -19,14 +29,33 @@ class Model(object):
         return self.forward(*args)
 
     def eval(self):
+        self.__eval(set())
+
+    def __eval(self, visited):
+        visited.add(id(self))
         self.is_eval = True
         for l in self.sub_models:
-            l.eval()
+            if id(l) not in visited:
+                l.__eval(visited)
 
     def train(self):
+        self.__train(set())
+
+    def __train(self, visited):
+        visited.add(id(self))
         self.is_eval = False
         for l in self.sub_models:
-            l.train()
+            if id(l) not in visited:
+                l.__train(visited)
+
+    def __setattr__(self, key, value):
+        if isinstance(value, Model):
+            self.sub_models.append(value)
+
+        if isinstance(value, Tensor) and value.autograd:
+            self.params.append(value)
+
+        super().__setattr__(key, value)
 
 
 class Sequential(Model):
@@ -37,22 +66,17 @@ class Sequential(Model):
         if layers is None:
             layers = []
         self.layers = layers
-
-        self.sub_models = layers
+        for l in layers:
+            self.sub_models.append(l)
 
     def add(self, layer):
         self.layers.append(layer)
+        self.sub_models.append(layer)
 
     def forward(self, input: Tensor):
         for layer in self.layers:
             input = layer.forward(input)
         return input
-
-    def get_parameters(self):
-        params = list()
-        for l in self.layers:
-            params += l.get_parameters()
-        return params
 
 
 class Linear(Model):
@@ -62,9 +86,6 @@ class Linear(Model):
         W = np.random.randn(n_inputs, n_outputs) * np.sqrt(2.0 / n_inputs)
         self.weight = Tensor(W, autograd=True)
         self.bias = Tensor(np.zeros(n_outputs), autograd=True)
-
-    def get_parameters(self):
-        return [self.weight, self.bias]
 
     def forward(self, input: Tensor):
         return input.mm(self.weight) + self.bias
@@ -84,12 +105,6 @@ class Conv2d(Model):
             self.bias = Tensor(np.zeros(n_outputs), autograd=True)
         else:
             self.bias = None
-
-    def get_parameters(self):
-        if self.bias is not None:
-            return [self.weight, self.bias]
-        else:
-            return [self.weight]
 
     def forward(self, input: Tensor):
         output = conv2d(input, self.weight, stride=self.stride, padding=self.padding)
@@ -156,9 +171,6 @@ class LSTM(Model):
 
         return self.y, self.h
 
-    def get_parameters(self):
-        return [self.W_ih, self.W_hh, self.W_hy, self.bias_h, self.bias_y]
-
 
 class Tanh(Model):
     def __init__(self):
@@ -166,9 +178,6 @@ class Tanh(Model):
 
     def forward(self, input: Tensor):
         return input.tanh()
-
-    def get_parameters(self):
-        return []
 
 
 class Sigmoid(Model):
@@ -178,9 +187,6 @@ class Sigmoid(Model):
     def forward(self, input: Tensor):
         return input.sigmoid()
 
-    def get_parameters(self):
-        return []
-
 
 class ReLu(Model):
     def __int__(self):
@@ -188,9 +194,6 @@ class ReLu(Model):
 
     def forward(self, input: Tensor):
         return input.relu()
-
-    def get_parameters(self):
-        return []
 
 
 class BatchNorm1d(Model):
@@ -214,9 +217,6 @@ class BatchNorm1d(Model):
 
             return self.gamma * norm + self.beta
 
-    def get_parameters(self):
-        return [self.gamma, self.beta]
-
 
 class BatchNorm2d(Model):
     def __init__(self, n_inputs):
@@ -239,9 +239,6 @@ class BatchNorm2d(Model):
 
             return self.gamma * norm + self.beta
 
-    def get_parameters(self):
-        return [self.gamma, self.beta]
-
 
 class Dropout(Model):
     def __init__(self, p=0.5):
@@ -255,9 +252,6 @@ class Dropout(Model):
             self.mask = Tensor(np.random.binomial(1, self.p, size=input.data.shape), autograd=True)
             return input * self.mask
 
-    def get_parameters(self):
-        return []
-
 
 class Dropout2d(Model):
     def __init__(self, p=0.5):
@@ -270,6 +264,3 @@ class Dropout2d(Model):
         else:
             self.mask = Tensor(np.random.binomial(1, self.p, size=(*input.data.shape[:-2], 1, 1)), autograd=True)
             return input * self.mask
-
-    def get_parameters(self):
-        return []

@@ -24,7 +24,7 @@ dataset = Dataset(data, labels)
 
 train_dataset, test_dataset = dataset.split(0.8)
 
-opt = SGD(parameters=m.get_parameters(), lr=0.01)
+opt = SGD(parameters=m.params(), lr=0.01)
 
 sch = MultiStepLR(opt, [10, 20, 30, 40, 50, 60, 70, 80, 90])
 
