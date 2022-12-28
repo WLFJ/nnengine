@@ -10,9 +10,6 @@ class MnistDataset(Dataset):
         super(MnistDataset, self).__init__()
 
     def load_data(self, data_dir):
-        # 2019 可以选择不同的数据集
-        # data_dir = "../Dataset/fashion-mnist/"
-
         def extract_data(filename, num_data, head_size, data_size):
             with gzip.open(filename) as bytestream:
                 bytestream.read(head_size)

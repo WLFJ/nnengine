@@ -874,6 +874,14 @@ class TransposeOp(Op):
 class ReshapeOp(Op):
     def __init__(self, t: Tensor, shape: [int]):
         super(ReshapeOp, self).__init__([t])
+
+        shape = list(shape)
+        for i in range(len(shape)):
+            if shape[i] == -1:
+                shape[i] = int(np.prod(t.shape) / np.prod(shape))
+                break
+        shape = tuple(shape)
+
         self.shape = shape
         self.grad_fn = [
             lambda grad, out, args: grad.reshape(args[0].data.shape)
@@ -887,6 +895,208 @@ class ReshapeOp(Op):
                                          autograd=any(t.autograd for t in self.input))
             TcGraph.AddOp('reshape', [self.input[0]], [self.output])
         return self.output
+
+
+class Conv2dOp(Op):
+    def __init__(self, t: Tensor, kernel: Tensor, stride: int, padding: int):
+        super(Conv2dOp, self).__init__([t, kernel])
+        self.stride = stride
+        self.padding = padding
+        self.grad_fn = [
+            lambda grad, out, args: self.calc_grad_input(grad),
+            lambda grad, out, args: self.calc_grad_kernel(grad)
+        ]
+        self.calc()
+        self.add_dependency()
+
+    def calc(self):
+        if self.output is None:
+            self.img_cols, data = self._conv2d(self.input[0].data, self.input[1].data, self.stride, self.padding)
+            self.output: Tensor = Tensor(data, creation_op=self, autograd=any(t.autograd for t in self.input))
+            TcGraph.AddOp('conv2d', [self.input[0], self.input[1]], [self.output])
+        return self.output
+
+    def calc_grad_kernel(self, grad_output: np.ndarray):
+        B, _, _, _ = grad_output.shape
+        # kernel 的 grad
+        YC_grad = self._y_to_YC(grad_output)
+        XC_T = self.img_cols.transpose()
+        weight_grad = np.dot(XC_T, YC_grad)
+        return weight_grad.transpose().reshape(self.input[1].data.shape)
+
+    def calc_grad_input(self, grad_output: np.ndarray):
+        # input 的 grad
+        grad_output_padding = self._stride_and_padding(grad_output,
+                                                       stride=self.stride,
+                                                       padding=self.input[1].data.shape[-1] - 1)
+        kernel_ = self._rotate180(self.input[1].data)
+        return self._conv2d(grad_output_padding, kernel_, stride=1)[1]
+
+    def _conv2d(self, img: np.ndarray, kernel: np.ndarray, stride=1, padding=0):
+        B, _, H, W = img.shape
+        O, I, K, K = kernel.shape
+        img_cols = self._img2col(img, kernel_size=K, stride=stride)
+        kernel_ = kernel.reshape(O, -1).T
+        y = np.dot(img_cols, kernel_)  # 矩阵相乘
+        output_H, output_W = (H - K) // stride + 1, (W - K) // stride + 1
+        result = self._YC_to_y(y, B, O, output_H, output_W)  # reshape变换输出的形式
+        return img_cols, result
+
+    # YC变换成Y，前向过程需要
+    def _YC_to_y(self, YC, batch_size, channel, output_H, output_W):
+        result = YC.reshape((batch_size, YC.shape[0] // batch_size, -1)).reshape(
+            (batch_size, output_H, output_W, channel))
+        return result.transpose((0, 3, 1, 2))
+
+    # y变换成YC，反向传播过程需要
+    def _y_to_YC(self, y):
+        B, C, H, W = y.shape
+        result = y.transpose((0, 2, 3, 1)).reshape(B * W * H, -1)
+        return result
+
+    def _img2col(self, img: np.ndarray, kernel_size, stride=1):
+        B, C, H, W = img.shape
+        out_h = (H - kernel_size) // stride + 1
+        out_w = (W - kernel_size) // stride + 1
+
+        col = np.zeros((B, C, kernel_size, kernel_size, out_h, out_w))
+
+        for y in range(kernel_size):
+            y_max = y + stride * out_h
+            for x in range(kernel_size):
+                x_max = x + stride * out_w
+                col[:, :, y, x, :, :] = img[:, :, y:y_max:stride, x:x_max:stride]
+
+        col = np.ascontiguousarray(col.transpose((0, 4, 5, 1, 2, 3))).reshape(B * out_h * out_w, -1)
+        # (B * out_h * out_w, C * kernel_size * kernel_size)
+        return col
+
+    def _stride_and_padding(self, grad_output, stride, padding):
+        if stride > 1:
+            N, O, output_H, output_W = grad_output.shape
+            inserted_H, inserted_W = output_H + (output_H - 1) * (stride - 1), output_W + (output_W - 1) * (stride - 1)
+            inserted_eta = np.zeros((N, O, inserted_H, inserted_W))
+            inserted_eta[:, :, ::stride, ::stride] = grad_output
+            grad_output = inserted_eta
+
+        grad_output = np.lib.pad(grad_output, ((0, 0),
+                                               (0, 0),
+                                               (padding, padding),
+                                               (padding, padding)), "constant",
+                                 constant_values=0)
+        return grad_output
+
+    def _rotate180(self, kernel):
+        # 旋转90+90度构成旋转180度
+        # weight = np.rot90(weight, axes=(2, 3))
+        # weight = np.rot90(weight, axes=(2, 3))
+        _, C, _, _ = kernel.shape
+        weight_flip = np.flip(kernel, (2, 3))  # 卷积核旋转180度
+        weight_flip_swap = np.swapaxes(weight_flip, 0, 1)  # 交换输入、输出通道的顺序[C,O,H,W]
+        return weight_flip_swap
+
+
+class MaxPool2dOp(Op):
+    def __init__(self, t: Tensor, kernel_size: int, stride: int, padding: int):
+        super(MaxPool2dOp, self).__init__([t])
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.padding = padding
+        self.grad_fn = [
+            lambda grad, out, args: self.max_pool2d_grad_input(grad, args[0].data, out.data,
+                                                               self.kernel_size, self.stride,
+                                                               self.padding)
+        ]
+        self.calc()
+        self.add_dependency()
+
+    def max_pool2d_grad_input(self, grad: np.ndarray, input: np.ndarray, output: np.ndarray, kernel_size: int,
+                              stride: int, padding: int):
+        batch_size, in_channels, in_height, in_width = input.shape
+        out_height = (in_height - kernel_size + 2 * padding) // stride + 1
+        out_width = (in_width - kernel_size + 2 * padding) // stride + 1
+        grad_input = np.zeros(input.shape)
+        for b in range(batch_size):
+            for c in range(in_channels):
+                for h in range(out_height):
+                    for w in range(out_width):
+                        grad_input[b, c, h * stride:h * stride + kernel_size, w * stride:w * stride + kernel_size] += \
+                            grad[b, c, h, w] * (
+                                    input[b, c, h * stride:h * stride + kernel_size,
+                                    w * stride:w * stride + kernel_size] ==
+                                    output[b, c, h, w])
+        return grad_input
+
+    def calc(self):
+        if self.output is None:
+            self.output: Tensor = Tensor(
+                self.max_pool2d(self.input[0].data, self.kernel_size, self.stride, self.padding), creation_op=self,
+                autograd=any(t.autograd for t in self.input))
+            TcGraph.AddOp('max_pool2d', [self.input[0]], [self.output])
+        return self.output
+
+    def max_pool2d(self, input: np.ndarray, kernel_size: int, stride: int, padding: int):
+        batch_size, in_channels, in_height, in_width = input.shape
+        out_height = (in_height - kernel_size + 2 * padding) // stride + 1
+        out_width = (in_width - kernel_size + 2 * padding) // stride + 1
+        output = np.zeros((batch_size, in_channels, out_height, out_width))
+        for b in range(batch_size):
+            for c in range(in_channels):
+                for h in range(out_height):
+                    for w in range(out_width):
+                        output[b, c, h, w] = np.max(
+                            input[b, c, h * stride:h * stride + kernel_size, w * stride:w * stride + kernel_size])
+        return output
+
+
+class AvgPool2dOp(Op):
+    def __init__(self, t: Tensor, kernel_size: int, stride: int, padding: int):
+        super(AvgPool2dOp, self).__init__([t])
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.padding = padding
+        self.grad_fn = [
+            lambda grad, out, args: self.avg_pool2d_grad_input(grad, args[0].data, out.data,
+                                                               self.kernel_size, self.stride,
+                                                               self.padding)
+        ]
+        self.calc()
+        self.add_dependency()
+
+    def avg_pool2d_grad_input(self, grad: np.ndarray, input: np.ndarray, output: np.ndarray, kernel_size: int,
+                              stride: int, padding: int):
+        batch_size, in_channels, in_height, in_width = input.shape
+        out_height = (in_height - kernel_size + 2 * padding) // stride + 1
+        out_width = (in_width - kernel_size + 2 * padding) // stride + 1
+        grad_input = np.zeros(input.shape)
+        for b in range(batch_size):
+            for c in range(in_channels):
+                for h in range(out_height):
+                    for w in range(out_width):
+                        grad_input[b, c, h * stride:h * stride + kernel_size, w * stride:w * stride + kernel_size] += \
+                            grad[b, c, h, w]
+        return grad_input
+
+    def calc(self):
+        if self.output is None:
+            self.output: Tensor = Tensor(
+                self.avg_pool2d(self.input[0].data, self.kernel_size, self.stride, self.padding), creation_op=self,
+                autograd=any(t.autograd for t in self.input))
+            TcGraph.AddOp('avg_pool2d', [self.input[0]], [self.output])
+        return self.output
+
+    def avg_pool2d(self, input: np.ndarray, kernel_size: int, stride: int, padding: int):
+        batch_size, in_channels, in_height, in_width = input.shape
+        out_height = (in_height - kernel_size + 2 * padding) // stride + 1
+        out_width = (in_width - kernel_size + 2 * padding) // stride + 1
+        output = np.zeros((batch_size, in_channels, out_height, out_width))
+        for b in range(batch_size):
+            for c in range(in_channels):
+                for h in range(out_height):
+                    for w in range(out_width):
+                        output[b, c, h, w] = np.mean(
+                            input[b, c, h * stride:h * stride + kernel_size, w * stride:w * stride + kernel_size])
+        return output
 
 
 def log(t: Tensor) -> Tensor:
@@ -947,3 +1157,15 @@ def var(t: Tensor, axes: [int, Iterable]) -> Tensor:
 
 def sqrt(t: Tensor) -> Tensor:
     return t.sqrt()
+
+
+def conv2d(t: Tensor, kernel: Tensor, stride: int, padding: int) -> Tensor:
+    return Conv2dOp(t, kernel, stride, padding).calc()
+
+
+def max_pool2d(t: Tensor, kernel_size: int, stride: int, padding: int) -> Tensor:
+    return MaxPool2dOp(t, kernel_size, stride, padding).calc()
+
+
+def avg_pool2d(t: Tensor, kernel_size: int, stride: int, padding: int) -> Tensor:
+    return AvgPool2dOp(t, kernel_size, stride, padding).calc()

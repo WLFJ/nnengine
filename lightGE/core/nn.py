@@ -1,4 +1,4 @@
-from lightGE.core.tensor import Tensor
+from lightGE.core.tensor import Tensor, conv2d, max_pool2d, avg_pool2d
 import numpy as np
 
 
@@ -73,6 +73,7 @@ class Conv2d(Model):
 
         self.weight = Tensor(np.random.randn(n_outputs, n_inputs, filter_size, filter_size) * np.sqrt(
             2.0 / (n_inputs * filter_size * filter_size)), autograd=True)
+
         if bias:
             self.bias = Tensor(np.zeros(n_outputs), autograd=True)
         else:
@@ -85,98 +86,40 @@ class Conv2d(Model):
             return [self.weight]
 
     def forward(self, input: Tensor):
-        batch_size, n_inputs, input_height, input_width = input.data.shape
-        n_outputs, n_inputs, filter_size, filter_size = self.weight.data.shape
+        output = conv2d(input, self.weight, stride=self.stride, padding=self.padding)
 
-        output_height = int((input_height - filter_size + 2 * self.padding) / self.stride) + 1
-        output_width = int((input_width - filter_size + 2 * self.padding) / self.stride) + 1
+        if self.bias is not None:
+            output += self.bias.reshape((1, self.bias.shape[0], 1, 1))
 
-        self.output = Tensor(np.zeros((batch_size, n_outputs, output_height, output_width)), autograd=True)
-
-        for b in range(batch_size):
-            for f in range(n_outputs):
-                for i in range(output_height):
-                    for j in range(output_width):
-                        i_start = i * self.stride
-                        i_end = i_start + filter_size
-                        j_start = j * self.stride
-                        j_end = j_start + filter_size
-
-                        input_region = input.data[b, :, i_start:i_end, j_start:j_end]
-                        kernel = self.weight.data[f]
-                        if self.bias is not None:
-                            self.output.data[b, f, i, j] = (input_region * kernel).sum() + self.bias.data[f]
-                        else:
-                            self.output.data[b, f, i, j] = (input_region * kernel).sum()
-        return self.output
+        return output
 
 
 class MaxPool2d(Model):
-    def __init__(self, filter_size, stride=None):
+    def __init__(self, filter_size, stride=None, padding=0):
         super().__init__()
         self.filter_size = filter_size
         if stride is None:
             self.stride = filter_size
         else:
             self.stride = stride
+        self.padding = padding
 
     def forward(self, input: Tensor):
-        batch_size, n_inputs, input_height, input_width = input.data.shape
-
-        output_height = int((input_height - self.filter_size) / self.stride) + 1
-        output_width = int((input_width - self.filter_size) / self.stride) + 1
-
-        self.output = Tensor(np.zeros((batch_size, n_inputs, output_height, output_width)), autograd=True)
-
-        for b in range(batch_size):
-            for i in range(output_height):
-                for j in range(output_width):
-                    i_start = i * self.stride
-                    i_end = i_start + self.filter_size
-                    j_start = j * self.stride
-                    j_end = j_start + self.filter_size
-
-                    input_region = input.data[b, :, i_start:i_end, j_start:j_end]
-                    self.output.data[b, :, i, j] = input_region.max(axis=(1, 2))
-
-        return self.output
-
-    def get_parameters(self):
-        return []
+        return max_pool2d(input, self.filter_size, self.stride, self.padding)
 
 
 class AvgPool2d(Model):
-    def __init__(self, filter_size, stride=None):
+    def __init__(self, filter_size, stride=None, padding=0):
         super().__init__()
         self.filter_size = filter_size
         if stride is None:
             self.stride = filter_size
         else:
             self.stride = stride
+        self.padding = padding
 
     def forward(self, input: Tensor):
-        batch_size, n_inputs, input_height, input_width = input.data.shape
-
-        output_height = int((input_height - self.filter_size) / self.stride) + 1
-        output_width = int((input_width - self.filter_size) / self.stride) + 1
-
-        self.output = Tensor(np.zeros((batch_size, n_inputs, output_height, output_width)), autograd=True)
-
-        for b in range(batch_size):
-            for i in range(output_height):
-                for j in range(output_width):
-                    i_start = i * self.stride
-                    i_end = i_start + self.filter_size
-                    j_start = j * self.stride
-                    j_end = j_start + self.filter_size
-
-                    input_region = input.data[b, :, i_start:i_end, j_start:j_end]
-                    self.output.data[b, :, i, j] = input_region.mean(axis=(1, 2))
-
-        return self.output
-
-    def get_parameters(self):
-        return []
+        return avg_pool2d(input, self.filter_size, self.stride, self.padding)
 
 
 class LSTM(Model):
