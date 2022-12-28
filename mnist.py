@@ -17,7 +17,7 @@ class MnistDataset(Dataset):
             with gzip.open(filename) as bytestream:
                 bytestream.read(head_size)
                 buf = bytestream.read(data_size * num_data)
-                data = np.frombuffer(buf, dtype=np.uint8).astype(np.float)
+                data = np.frombuffer(buf, dtype=np.uint8).astype(np.float64)
             return data
 
         data = extract_data(data_dir + 'train-images-idx3-ubyte.gz', 60000, 16, 28 * 28)
@@ -36,14 +36,14 @@ class MnistDataset(Dataset):
         teY = np.asarray(teY)
 
         x = np.concatenate((trX, teX), axis=0)
-        y = np.concatenate((trY, teY), axis=0).astype(np.int)
+        y = np.concatenate((trY, teY), axis=0).astype(np.int32)
 
         data_index = np.arange(x.shape[0])
         np.random.shuffle(data_index)
         # data_index = data_index[:128]
         x = x[data_index, :, :, :]
         y = y[data_index]
-        y_vec = np.zeros((len(y), 10), dtype=np.float)
+        y_vec = np.zeros((len(y), 10), dtype=np.float64)
         for i, label in enumerate(y):
             y_vec[i, y[i]] = 1.0
 
@@ -80,7 +80,7 @@ class MNIST(Model):
     def forward(self, x: Tensor):
         x = self.conv1(x)
         x = self.conv2(x)
-        x = x.reshape(x.shape[0], -1)
+        x = x.reshape((x.shape[0], -1))
         x = self.fc1(x)
         x = self.fc2(x)
         return x.softmax()
@@ -91,7 +91,7 @@ class MNIST(Model):
 
 if __name__ == '__main__':
     mnist_dataset = MnistDataset()
-    mnist_dataset.load_data('./res/mnist/')
+    mnist_dataset.load_data('D:/Documents/mnist_data/')
     train_dataset, eval_dataset = mnist_dataset.split(0.7)
 
     m = MNIST()
