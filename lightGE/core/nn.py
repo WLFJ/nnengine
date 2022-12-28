@@ -6,7 +6,7 @@ class Model(object):
 
     def __init__(self):
         self.is_eval = False
-
+        self.sub_models = []
         pass
 
     def get_parameters(self):
@@ -20,9 +20,13 @@ class Model(object):
 
     def eval(self):
         self.is_eval = True
+        for l in self.sub_models:
+            l.eval()
 
     def train(self):
         self.is_eval = False
+        for l in self.sub_models:
+            l.train()
 
 
 class Sequential(Model):
@@ -33,6 +37,8 @@ class Sequential(Model):
         if layers is None:
             layers = []
         self.layers = layers
+
+        self.sub_models = layers
 
     def add(self, layer):
         self.layers.append(layer)
