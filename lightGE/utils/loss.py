@@ -21,3 +21,7 @@ def huberLoss(pred: Tensor, target: Tensor) -> Tensor:
         return (diff * diff).sum(0)
     else:
         return diff.abs().sum(0)
+
+
+def nll_loss(pred: Tensor, target: Tensor) -> Tensor:
+    return (-pred.log() * target).sum(1).sum(0)
