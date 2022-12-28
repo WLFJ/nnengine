@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from lightGE.core import Tensor, Linear
+from lightGE.core import Tensor, Linear, conv2d, max_pool2d, avg_pool2d
 from lightGE.utils import SGD, Adam
 
 
@@ -94,6 +94,46 @@ class TestTensor:
         assert (abs(t2.data - np.array([0.09003057, 0.24472847, 0.66524096])) <= 1e-8).all()
         t2.backward()
         assert (abs(t1.grad == np.array([0.009001, 0.023648, 0.067665])) <= 1e-8).all()
+
+    def test_conv2d(self):
+        t1 = Tensor(np.array([[[[1, 2, 3],
+                                [4, 5, 6],
+                                [7, 8, 9]]]]), autograd=True)
+        t2 = Tensor(np.array([[[[1, 1],
+                                [1, 1]]]]), autograd=True)
+        t3 = conv2d(t1, t2, stride=1, padding=0)
+        assert (t3.data == np.array([[[[12, 16],
+                                       [24, 28]]]])).all()
+        t3.backward()
+        assert (t1.grad == np.array([[[[1, 2, 1],
+                                       [2, 4, 2],
+                                       [1, 2, 1]]]])).all()
+        assert (t2.grad == np.array([[[[12, 16],
+                                       [24, 28]]]])).all()
+
+    def test_maxpool2d(self):
+        t1 = Tensor(np.array([[[[1, 2, 3],
+                                [4, 5, 6],
+                                [7, 8, 9]]]]), autograd=True)
+        t2 = max_pool2d(t1, kernel_size=2, stride=1, padding=0)
+        assert (t2.data == np.array([[[[5, 6],
+                                       [8, 9]]]])).all()
+        t2.backward()
+        assert (t1.grad == np.array([[[[0, 0, 0],
+                                       [0, 1, 1],
+                                       [0, 1, 1]]]])).all()
+
+    def test_avgpool2d(self):
+        t1 = Tensor(np.array([[[[1, 2, 3],
+                                [4, 5, 6],
+                                [7, 8, 9]]]]), autograd=True)
+        t2 = avg_pool2d(t1, kernel_size=2, stride=1, padding=0)
+        assert (t2.data == np.array([[[[3, 4],
+                                       [6, 7]]]])).all()
+        t2.backward()
+        assert (t1.grad == np.array([[[[0.25, 0.5, 0.25],
+                                       [0.5, 1, 0.5],
+                                       [0.25, 0.5, 0.25]]]])).all()
 
     def test_tanh(self):
         t1 = Tensor([0, 0, 0], autograd=True)

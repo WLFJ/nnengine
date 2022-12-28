@@ -1069,7 +1069,7 @@ class AvgPool2dOp(Op):
                     for w in range(out_width):
                         grad_input[b, c, h * stride:h * stride + kernel_size, w * stride:w * stride + kernel_size] += \
                             grad[b, c, h, w]
-        return grad_input
+        return grad_input / (kernel_size * kernel_size)
 
     def calc(self):
         if self.output is None:
