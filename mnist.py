@@ -104,7 +104,7 @@ if __name__ == '__main__':
     m = MNIST()
     opt = SGD(parameters=m.parameters(), lr=0.01)
 
-    cache_path = 'tmp/mnist_bst.pkl'
+    cache_path = 'tmp/mnist.pkl'
     trainer = Trainer(model=m, optimizer=opt, loss_fun=nll_loss,
                       config={'batch_size': 128,
                               'epochs': 10,

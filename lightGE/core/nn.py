@@ -1,13 +1,27 @@
+from collections import OrderedDict
+
 from lightGE.core.tensor import Tensor, conv2d, max_pool2d, avg_pool2d
 import numpy as np
+
+
+def _addindent(s_, numSpaces):
+    s = s_.split('\n')
+    # don't do anything for single-line stuff
+    if len(s) == 1:
+        return s_
+    first = s.pop(0)
+    s = [(numSpaces * ' ') + line for line in s]
+    s = '\n'.join(s)
+    s = first + '\n' + s
+    return s
 
 
 class Model(object):
 
     def __init__(self):
         self.is_eval = False
-        self.sub_models = []
-        self.params = []
+        self.sub_models = OrderedDict()
+        self.params = OrderedDict()
         pass
 
     def parameters(self):
@@ -15,8 +29,8 @@ class Model(object):
 
     def __parameters(self, visited):
         visited.add(id(self))
-        params = [*self.params]
-        for l in self.sub_models:
+        params = list(self.params.values())
+        for l in self.sub_models.values():
             if id(l) not in visited:
                 params += l.__parameters(visited)
 
@@ -34,7 +48,7 @@ class Model(object):
     def __eval(self, visited):
         visited.add(id(self))
         self.is_eval = True
-        for l in self.sub_models:
+        for l in self.sub_models.values():
             if id(l) not in visited:
                 l.__eval(visited)
 
@@ -44,37 +58,74 @@ class Model(object):
     def __train(self, visited):
         visited.add(id(self))
         self.is_eval = False
-        for l in self.sub_models:
+        for l in self.sub_models.values():
             if id(l) not in visited:
                 l.__train(visited)
 
     def __setattr__(self, key, value):
         if isinstance(value, Model):
-            self.sub_models.append(value)
+            self.sub_models[key] = value
 
         if isinstance(value, Tensor) and value.autograd:
-            self.params.append(value)
+            self.params[key] = value
 
         super().__setattr__(key, value)
+
+    def _extra_repr(self) -> str:
+        r"""Set the extra representation of the module
+
+        To print customized extra information, you should re-implement
+        this method in your own modules. Both single-line and multi-line
+        strings are acceptable.
+        """
+        return ''
+
+    def _get_name(self):
+        return self.__class__.__name__
+
+    def __repr__(self):
+        # We treat the extra repr like the sub-module, one item per line
+        extra_lines = []
+        extra_repr = self._extra_repr()
+        # empty string will be split into list ['']
+        if extra_repr:
+            extra_lines = extra_repr.split('\n')
+        child_lines = []
+
+        for key, value in self.params.items():
+            mod_str = _addindent(str(value.shape), 2)
+            child_lines.append('[' + key + ']: ' + mod_str)
+
+        for key, module in self.sub_models.items():
+            mod_str = repr(module)
+            mod_str = _addindent(mod_str, 2)
+            child_lines.append('(' + key + '): ' + mod_str)
+        lines = extra_lines + child_lines
+
+        main_str = self._get_name() + '('
+        if lines:
+            # simple one-liner info, which most builtin Modules will use
+            if len(extra_lines) == 1 and not child_lines:
+                main_str += extra_lines[0]
+            else:
+                main_str += '\n  ' + '\n  '.join(lines) + '\n'
+
+        main_str += ')'
+        return main_str
 
 
 class Sequential(Model):
 
-    def __init__(self, layers=None):
+    def __init__(self, layers):
         super().__init__()
-
-        if layers is None:
-            layers = []
-        self.layers = layers
         for l in layers:
-            self.sub_models.append(l)
+            self.add(l)
 
     def add(self, layer):
-        self.layers.append(layer)
-        self.sub_models.append(layer)
+        self.sub_models[str(len(self.sub_models))] = layer
 
     def forward(self, input: Tensor):
-        for layer in self.layers:
+        for layer in self.sub_models.values():
             input = layer.forward(input)
         return input
 
