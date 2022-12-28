@@ -1,28 +1,33 @@
 import numpy as np
 
 
-class Batch:
-    def __init__(self, data, labels):
-        self.data = data
-        self.labels = labels
-
-
 class Dataset(object):
-    def __init__(self, data_path):
-        self.data_path = data_path
-        self.data = self.load_data()
-        self.shape = self.data.shape
+    def __init__(self, data=None, label=None):
+        self.x = data
+        self.y = label
 
-    def load_data(self):
-        data = np.load(self.data_path)
-        return data
+    def load_data(self, data_path):
+        self.x: np.ndarray = np.load(data_path + 'data.npy')
+        self.y: np.ndarray = np.load(data_path + 'label.npy')
 
     def __len__(self):
-        return len(self.data)
+        return len(self.x)
 
     def __getitem__(self, idx):
-        img = self.data[idx]
-        return img
+        x, y = self.x[idx], self.y[idx]
+        return x, y
+
+    def split(self, ratio):
+        split_idx = int(len(self) * ratio)
+        train_dataset = Dataset(self.x[:split_idx], self.y[:split_idx])
+        test_dataset = Dataset(self.x[split_idx:], self.y[split_idx:])
+        return train_dataset, test_dataset
+
+    def padding(self, pad_size):
+        padding_x = np.zeros((pad_size, *self.x.shape[1:]))
+        padding_y = np.zeros((pad_size, *self.y.shape[1:]))
+        self.x = np.concatenate((self.x, padding_x), axis=0)
+        self.y = np.concatenate((self.y, padding_y), axis=0)
 
 
 class DataLoader(object):
@@ -44,14 +49,16 @@ class DataLoader(object):
 
     def __next__(self):
         if self.index < self.batch_num:
-            batch = []
+            batch_x = []
+            batch_y = []
             for i in range(self.batch_size):
                 idx = self.indexes[self.index * self.batch_size + i]
-                batch.append(self.dataset[idx])
-            batch = np.array(batch)
-            batch = Batch(batch[..., :-1], batch[..., -1:])
+                x, y = self.dataset[idx]
+                batch_x.append(x)
+                batch_y.append(y)
+
             self.index += 1
-            return batch
+            return np.array(batch_x), np.array(batch_y)
         else:
             self.index = 0
             if self.shuffle:
@@ -62,14 +69,5 @@ class DataLoader(object):
         return self.batch_num
 
     def padding(self):
-        padding_num = self.batch_size - len(self.dataset) % self.batch_size
-        padding_data = np.zeros((padding_num, *self.dataset.shape[1:]))
-        self.dataset = np.concatenate((self.dataset, padding_data), axis=0)
-
-
-def split(dataset, ratio):
-    length = len(dataset)
-    train_length = int(length * ratio)
-    train_dataset = dataset[:train_length]
-    eval_dataset = dataset[train_length:]
-    return train_dataset, eval_dataset
+        padding_num = self.batch_size - self.length % self.batch_size
+        self.dataset.padding(padding_num)

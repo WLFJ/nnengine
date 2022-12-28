@@ -1,7 +1,7 @@
 import torch
 
 from lightGE.core.nn import Model, Sequential, Linear, Conv2d
-from lightGE.data import split
+from lightGE.data import Dataset
 from lightGE.utils import mseLoss, maeLoss, crossEntropyLoss
 from lightGE.core.nn import Linear
 from lightGE.utils.scheduler import MultiStepLR, StepLR, Exponential, Cosine
@@ -20,9 +20,9 @@ data = np.random.randn(100, 2)
 
 labels = data[:, 0:1] + 10 * data[:, 1:2]
 
-dataset = np.concatenate([data, labels], axis=1)
+dataset = Dataset(data, labels)
 
-train_dataset, test_dataset = split(dataset, 0.8)
+train_dataset, test_dataset = dataset.split(0.8)
 
 opt = SGD(parameters=m.get_parameters(), lr=0.01)
 

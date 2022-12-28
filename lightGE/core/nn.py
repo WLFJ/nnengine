@@ -233,7 +233,7 @@ class Sigmoid(Model):
         return []
 
 
-class Relu(Model):
+class ReLu(Model):
     def __int__(self):
         super().__init__()
 
@@ -292,3 +292,19 @@ class BatchNorm2d(Model):
 
     def get_parameters(self):
         return [self.gamma, self.beta]
+
+
+class Dropout(Model):
+    def __init__(self, p=0.5):
+        super().__init__()
+        self.p = p
+
+    def forward(self, input: Tensor):
+        if self.is_eval:
+            return input
+        else:
+            self.mask = Tensor(np.random.binomial(1, self.p, size=input.data.shape), autograd=True)
+            return input * self.mask
+
+    def get_parameters(self):
+        return []

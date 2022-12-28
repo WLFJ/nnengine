@@ -8,7 +8,6 @@ from lightGE.core.tensor import Tensor
 import logging
 
 
-
 class Trainer(object):
 
     def __init__(self, model, optimizer, loss_fun, config, schedule=None):
@@ -51,10 +50,10 @@ class Trainer(object):
         bar = tqdm(train_dataloader)
         batch_idx = 0
 
-        for batch in bar:
+        for batch_x, batch_y in bar:
             batch_idx += 1
-            y_truth = Tensor(batch.labels, autograd=False)
-            y_pred = self.m(Tensor(batch.data, autograd=False))
+            y_truth = Tensor(batch_y, autograd=False)
+            y_pred = self.m(Tensor(batch_x, autograd=False))
             loss: Tensor = self.lf(y_pred, y_truth)
             loss.backward()
             self.opt.step(loss)
@@ -67,9 +66,9 @@ class Trainer(object):
 
     def _eval_epoch(self, eval_dataloader):
         losses = []
-        for batch in eval_dataloader:
-            y_truth = Tensor(batch.labels, autograd=False)
-            y_pred = self.m(Tensor(batch.data, autograd=False))
+        for batch_x, batch_y in eval_dataloader:
+            y_truth = Tensor(batch_y, autograd=False)
+            y_pred = self.m(Tensor(batch_x, autograd=False))
             loss: Tensor = self.lf(y_pred, y_truth)
             losses.append(loss.data)
         logging.info("Validation loss: {}".format(np.mean(losses)), )
