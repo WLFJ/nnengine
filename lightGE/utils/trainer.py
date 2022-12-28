@@ -56,7 +56,7 @@ class Trainer(object):
             y_pred = self.m(Tensor(batch_x, autograd=False))
             loss: Tensor = self.lf(y_pred, y_truth)
             loss.backward()
-            self.opt.step(loss)
+            self.opt.step()
             losses.append(loss.data)
 
             bar.set_description("Batch: {}/{} ".format(batch_idx, len(train_dataloader)) +
