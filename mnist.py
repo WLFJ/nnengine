@@ -88,7 +88,7 @@ class MNIST(Model):
 
 if __name__ == '__main__':
     mnist_dataset = MnistDataset()
-    mnist_dataset.load_data('D:/Documents/mnist_data/')
+    mnist_dataset.load_data('./res/mnist/')
     train_dataset, eval_dataset = mnist_dataset.split(0.7)
 
     m = MNIST()
