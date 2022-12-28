@@ -45,6 +45,7 @@ class Trainer(object):
         return min_eval_loss
 
     def _train_epoch(self, train_dataloader) -> [float]:
+        self.m.train()
         losses = []
 
         bar = tqdm(train_dataloader)
@@ -65,6 +66,7 @@ class Trainer(object):
         return np.mean(losses)
 
     def _eval_epoch(self, eval_dataloader):
+        self.m.eval()
         losses = []
         for batch_x, batch_y in eval_dataloader:
             y_truth = Tensor(batch_y, autograd=False)
