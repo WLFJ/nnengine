@@ -1,8 +1,11 @@
+import tqdm
+
 from lightGE.data.dataloader import Dataset
 from lightGE.core import Tensor, Model, Conv2d, Linear, ReLu, Dropout2d, MaxPool2d, Sequential
 from lightGE.utils import SGD, Trainer, nll_loss
 import numpy as np
 import gzip
+from lightGE.data import DataLoader
 
 
 class MnistDataset(Dataset):
@@ -86,6 +89,21 @@ class MNIST(Model):
         return self.parameters
 
 
+def evaluate(model, dataset):
+    dataloader = DataLoader(dataset, batch_size=128, shuffle=False)
+    correct = 0
+    bar = tqdm.tqdm(dataloader)
+    i = 0
+    for x, y in bar:
+        y_pred = model(Tensor(x))
+        y_pred = np.argmax(y_pred.data, axis=1)
+        y = np.argmax(y.data, axis=1)
+        correct += np.sum(y_pred == y)
+        i += 128
+        bar.set_description("acc: {}".format(correct / i))
+    return correct / len(dataset)
+
+
 if __name__ == '__main__':
     mnist_dataset = MnistDataset()
     mnist_dataset.load_data('./res/mnist/')
@@ -94,12 +112,14 @@ if __name__ == '__main__':
     m = MNIST()
     opt = SGD(parameters=m.get_parameters(), lr=0.01)
 
+    cache_path = './tmp/mnist.pkl'
     trainer = Trainer(model=m, optimizer=opt, loss_fun=nll_loss,
                       config={'batch_size': 128,
                               'epochs': 10,
                               'shuffle': False,
-                              'save_path': './tmp/mnist.pkl'})
+                              'save_path': cache_path})
 
-    trainer.train(train_dataset, eval_dataset)
-
-
+    # trainer.train(train_dataset, eval_dataset)
+    trainer.load_model(cache_path)
+    # trainer.train(train_dataset, eval_dataset)
+    evaluate(m, eval_dataset)

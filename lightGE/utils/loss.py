@@ -24,4 +24,4 @@ def huberLoss(pred: Tensor, target: Tensor) -> Tensor:
 
 
 def nll_loss(pred: Tensor, target: Tensor) -> Tensor:
-    return (-pred.log() * target).sum(1).sum(0)
+    return (-pred.log() * target).sum(1).mean(0)

@@ -7,6 +7,8 @@ from lightGE.core.tensor import Tensor
 
 import logging
 
+logging.basicConfig(level=logging.INFO)
+
 
 class Trainer(object):
 
