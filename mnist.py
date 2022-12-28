@@ -1,6 +1,6 @@
 from lightGE.data.dataloader import Dataset
-from lightGE.core import Tensor, Model, Conv2d, Linear, ReLu, Dropout, MaxPool2d, Sequential
-from lightGE.utils import SGD, Trainer, crossEntropyLoss
+from lightGE.core import Tensor, Model, Conv2d, Linear, ReLu, Dropout2d, MaxPool2d, Sequential
+from lightGE.utils import SGD, Trainer, nll_loss
 import numpy as np
 import gzip
 
@@ -62,11 +62,11 @@ class MNIST(Model):
 
         self.conv2 = Sequential([
             Conv2d(10, 20, filter_size=5),
-            Dropout(),
+            Dropout2d(),
             MaxPool2d(filter_size=2),
             ReLu()])
         self.fc1 = Sequential([Linear(320, 50), ReLu()])
-        self.fc2 = Sequential([Dropout(), Linear(50, 10)])
+        self.fc2 = Sequential([Dropout2d(), Linear(50, 10)])
 
         self.parameters = []
         self.parameters += self.conv1.get_parameters()
@@ -94,10 +94,12 @@ if __name__ == '__main__':
     m = MNIST()
     opt = SGD(parameters=m.get_parameters(), lr=0.01)
 
-    trainer = Trainer(model=m, optimizer=opt, loss_fun=crossEntropyLoss,
+    trainer = Trainer(model=m, optimizer=opt, loss_fun=nll_loss,
                       config={'batch_size': 128,
                               'epochs': 10,
                               'shuffle': False,
                               'save_path': './tmp/mnist.pkl'})
 
     trainer.train(train_dataset, eval_dataset)
+
+
